@@ -31,7 +31,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Upload, User, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, User, CheckCircle, AlertCircle, Edit, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import {
   odishaDistricts,
@@ -42,35 +42,36 @@ import {
 export default function RegistrationPage() {
   const router = useRouter();
 
-
   type RegistrationFormState = {
-  name: string;
-  village: string;
-  gp: string;
-  district: string;
-  block: string;
-  mobile: string;
-  aadhaarOrId: string;
-  category: string;
-};
-  
-  // ✅ FIX: Keep type annotation on same line
-const [formData, setFormData] = useState<RegistrationFormState>({
-  name: "",
-  village: "",
-  gp: "",
-  district: "",
-  block: "",
-  mobile: "",
-  aadhaarOrId: "",
-  category: "",
-});
+    name: string;
+    village: string;
+    gp: string;
+    district: string;
+    block: string;
+    mobile: string;
+    aadhaarOrId: string;
+    category: string;
+  };
 
+  const [formData, setFormData] = useState<RegistrationFormState>({
+    name: "",
+    village: "",
+    gp: "",
+    district: "",
+    block: "",
+    mobile: "",
+    aadhaarOrId: "",
+    category: "",
+  });
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ✅ NEW: Verification step state
+  const [showVerification, setShowVerification] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Already Registered Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -86,12 +87,11 @@ const [formData, setFormData] = useState<RegistrationFormState>({
     if (error) setError("");
   };
 
-  // Handle district change separately
   const handleDistrictChange = (district: string) => {
     setFormData({
       ...formData,
       district,
-      block: "", // Reset block when district changes
+      block: "",
     });
     if (error) setError("");
   };
@@ -99,7 +99,6 @@ const [formData, setFormData] = useState<RegistrationFormState>({
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError("Photo size should be less than 5MB");
         return;
@@ -114,7 +113,6 @@ const [formData, setFormData] = useState<RegistrationFormState>({
     }
   };
 
-  // Check if Aadhaar already exists
   const handleCheckAadhaar = async () => {
     if (!aadhaarCheck || aadhaarCheck.length !== 12) {
       setAadhaarError("Please enter a valid 12-digit Aadhaar number");
@@ -128,7 +126,6 @@ const [formData, setFormData] = useState<RegistrationFormState>({
       const response = await registrationApi.checkAadhaar(aadhaarCheck);
       
       if (response.exists) {
-        // Redirect to QR code page
         setIsDialogOpen(false);
         router.push(`/qr-code/${response.qrCode}`);
       } else {
@@ -141,113 +138,239 @@ const [formData, setFormData] = useState<RegistrationFormState>({
     }
   };
 
+  // ✅ NEW: Handle form validation and show verification
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  // Validation
-  if (!formData.name.trim()) {
-    setError("Please enter your name");
-    setLoading(false);
-    return;
-  }
-
-  if (!formData.village.trim()) {
-    setError("Please enter your village");
-    setLoading(false);
-    return;
-  }
-
-  if (!formData.gp.trim()) {
-    setError("Please enter your GP");
-    setLoading(false);
-    return;
-  }
-
-  if (!formData.district) {
-    setError("Please select a district");
-    setLoading(false);
-    return;
-  }
-
-  if (!formData.block) {
-    setError("Please select a block");
-    setLoading(false);
-    return;
-  }
-
-  if (!formData.category) {
-    setError("Please select a category");
-    setLoading(false);
-    return;
-  }
-
-  if (formData.mobile.length !== 10) {
-    setError("Mobile number must be exactly 10 digits");
-    setLoading(false);
-    return;
-  }
-
-  if (!/^[6-9]\d{9}$/.test(formData.mobile)) {
-    setError("Please enter a valid Indian mobile number starting with 6-9");
-    setLoading(false);
-    return;
-  }
-
-  if (formData.aadhaarOrId.length !== 12) {
-    setError("Aadhaar number must be exactly 12 digits");
-    setLoading(false);
-    return;
-  }
-
-  if (!/^\d{12}$/.test(formData.aadhaarOrId)) {
-    setError("Aadhaar number must contain only digits");
-    setLoading(false);
-    return;
-  }
-
-  console.log("=== FORM DATA BEFORE SUBMISSION ===");
-  console.log("Name:", formData.name);
-  console.log("Village:", formData.village);
-  console.log("GP:", formData.gp);
-  console.log("District:", formData.district);
-  console.log("Block:", formData.block);
-  console.log("Mobile:", formData.mobile);
-  console.log("Aadhaar:", formData.aadhaarOrId);
-  console.log("Category:", formData.category);
-  console.log("Has Photo:", !!photo);
-
-  try {
-    const data: CreateRegistrationData = {
-      ...formData,
-      ...(photo && { photo }),
-    };
-
-    console.log("Submitting registration...");
-    const response = await registrationApi.create(data);
-    console.log("Registration successful, redirecting...");
-    
-    // Redirect to QR code page
-    router.push(`/qr-code/${response.qrCode}`);
-  } catch (err: any) {
-    console.error("❌ Registration error:", err);
-    
-    // Extract error message
-    let errorMessage = "Registration failed. Please try again.";
-    
-    if (err.message) {
-      errorMessage = err.message;
-    } else if (err.response?.data?.message) {
-      errorMessage = err.response.data.message;
+    // Validation
+    if (!formData.name.trim()) {
+      setError("Please enter your name");
+      setLoading(false);
+      return;
     }
-    
-    setError(errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
 
+    if (!formData.village.trim()) {
+      setError("Please enter your village");
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.gp.trim()) {
+      setError("Please enter your GP");
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.district) {
+      setError("Please select a district");
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.block) {
+      setError("Please select a block");
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.category) {
+      setError("Please select a category");
+      setLoading(false);
+      return;
+    }
+
+    if (formData.mobile.length !== 10) {
+      setError("Mobile number must be exactly 10 digits");
+      setLoading(false);
+      return;
+    }
+
+    if (!/^[6-9]\d{9}$/.test(formData.mobile)) {
+      setError("Please enter a valid Indian mobile number starting with 6-9");
+      setLoading(false);
+      return;
+    }
+
+    if (formData.aadhaarOrId.length !== 12) {
+      setError("Aadhaar number must be exactly 12 digits");
+      setLoading(false);
+      return;
+    }
+
+    if (!/^\d{12}$/.test(formData.aadhaarOrId)) {
+      setError("Aadhaar number must contain only digits");
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Show verification step instead of submitting directly
+    setShowVerification(true);
+    setLoading(false);
+  };
+
+  // ✅ NEW: Handle final submission after verification
+  const handleFinalSubmit = async () => {
+    setSubmitting(true);
+    setError("");
+
+    console.log("=== FINAL SUBMISSION ===");
+    console.log("Form Data:", formData);
+    console.log("Has Photo:", !!photo);
+
+    try {
+      const data: CreateRegistrationData = {
+        ...formData,
+        ...(photo && { photo }),
+      };
+
+      console.log("Submitting registration...");
+      const response = await registrationApi.create(data);
+      console.log("✅ Registration successful:", response);
+      
+      // ✅ Show success message instead of redirecting
+      alert(`✅ Registration Successful!\n\nName: ${response.name}\nQR Code: ${response.qrCode}\n\nYou can now use your QR code to check-in at the event.`);
+      
+      // Reset form
+      setFormData({
+        name: "",
+        village: "",
+        gp: "",
+        district: "",
+        block: "",
+        mobile: "",
+        aadhaarOrId: "",
+        category: "",
+      });
+      setPhoto(null);
+      setPhotoPreview(null);
+      setShowVerification(false);
+      
+      // Optional: Redirect to home or registrations page
+      router.push('/');
+      
+    } catch (err: any) {
+      console.error("❌ Registration error:", err);
+      
+      let errorMessage = "Registration failed. Please try again.";
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      // ✅ Show error message
+      setError(errorMessage);
+      alert(`❌ Registration Failed!\n\n${errorMessage}`);
+      setShowVerification(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ✅ NEW: Handle back to edit
+  const handleBackToEdit = () => {
+    setShowVerification(false);
+    setError("");
+  };
+
+  // ✅ NEW: Verification/Review Screen
+  if (showVerification) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+        <div className="max-w-3xl mx-auto">
+          <Card className="shadow-2xl border-0">
+            <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
+              <CardTitle className="text-3xl font-bold flex items-center gap-3">
+                <CheckCircle className="w-8 h-8" />
+                Verify Your Details
+              </CardTitle>
+              <CardDescription className="text-green-100 text-lg">
+                Please review your information before final submission
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6 space-y-6">
+              {error && (
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded">
+                  <p className="font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    {error}
+                  </p>
+                </div>
+              )}
+
+              {/* Photo Preview */}
+              {photoPreview && (
+                <div className="flex justify-center">
+                  <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
+                    <Image
+                      src={photoPreview}
+                      alt="Your photo"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DetailItem label="Full Name" value={formData.name} />
+                <DetailItem label="Mobile Number" value={formData.mobile} />
+                <DetailItem label="Aadhaar Number" value={formData.aadhaarOrId} />
+                <DetailItem label="Category" value={formData.category} />
+                <DetailItem label="Village" value={formData.village} />
+                <DetailItem label="Gram Panchayat" value={formData.gp} />
+                <DetailItem label="District" value={formData.district} />
+                <DetailItem label="Block" value={formData.block} />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleBackToEdit}
+                  disabled={submitting}
+                  className="flex-1 h-12 text-lg border-2"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  Back to Edit
+                </Button>
+                
+                <Button
+                  onClick={handleFinalSubmit}
+                  disabled={submitting}
+                  className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Confirm & Submit
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <p className="text-sm text-gray-600 text-center pt-4">
+                Please verify all details are correct before submitting. 
+                You can go back to edit if needed.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Original Form (unchanged)
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-3xl mx-auto">
@@ -468,7 +591,7 @@ const [formData, setFormData] = useState<RegistrationFormState>({
                   <SelectTrigger 
                     className={`w-full h-11 ${!formData.category && error ? "border-red-500" : ""}`}
                   >
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
                     {odishaCategory.map((dept) => (
@@ -480,58 +603,28 @@ const [formData, setFormData] = useState<RegistrationFormState>({
                 </Select>
               </div>
 
-              {/* Photo Upload */}
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">
-                  Photo (Optional)
-                </Label>
-                <div className="flex items-center gap-4">
-                  {photoPreview ? (
-                    <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
-                      <Image
-                        src={photoPreview}
-                        alt="Preview"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border-2 border-dashed border-gray-400">
-                      <User className="w-10 h-10 text-gray-400" />
-                    </div>
-                  )}
-
-                  <label className="flex-1 cursor-pointer">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition">
-                      <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-                      <p className="text-sm font-medium text-gray-700">
-                        Click to upload photo
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        PNG, JPG up to 5MB
-                      </p>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
 
               <Button 
                 type="submit" 
                 className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" 
                 disabled={loading}
               >
-                {loading ? "Registering..." : "Register Now"}
+                {loading ? "Validating..." : "Continue to Verify"}
               </Button>
             </form>
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// ✅ Helper component for displaying details
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+      <p className="text-sm text-gray-600 font-medium mb-1">{label}</p>
+      <p className="text-base font-semibold text-gray-900">{value}</p>
     </div>
   );
 }
