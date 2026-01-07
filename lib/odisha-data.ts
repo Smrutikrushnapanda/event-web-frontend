@@ -65,8 +65,9 @@ export const odishaBlocks: Record<string, string[]> = {
 };
 
 export const odishaCategory = [
-  "Dairy Farmers",
-"Goat & Sheep Farmers",
-"Pig Farmers",
-"Poultry Farmers"
+  "Poultry Farmers",
+  "Small Animal Farmers",
+  "Fishers",
+  "Fish Seed Producers",
+  "Fish Producers"
 ];
