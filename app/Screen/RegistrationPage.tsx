@@ -36,7 +36,7 @@ import Image from "next/image";
 import {
   odishaDistricts,
   odishaBlocks,
-  odishaDepartments,
+  odishaCategory,
 } from "@/lib/odisha-data";
 
 export default function RegistrationPage() {
@@ -471,7 +471,7 @@ const [formData, setFormData] = useState<RegistrationFormState>({
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
-                    {odishaDepartments.map((dept) => (
+                    {odishaCategory.map((dept) => (
                       <SelectItem key={dept} value={dept}>
                         {dept}
                       </SelectItem>
