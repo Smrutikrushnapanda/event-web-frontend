@@ -40,19 +40,32 @@ import {
 } from "@/lib/odisha-data";
 
 export default function RegistrationPage() {
+
+
+  type RegistrationFormState = {
+  name: string;
+  village: string;
+  gp: string;
+  district: string;
+  block: string;
+  mobile: string;
+  aadhaarOrId: string;
+  category: string;
+};
+
+
+
   const router = useRouter();
-  const [formData, setFormData] = useState
-    Omit<CreateRegistrationData, "photo">
-  ({
-    name: "",
-    village: "",
-    gp: "",
-    district: "",
-    block: "",
-    mobile: "",
-    aadhaarOrId: "",
-    category: "General",
-  });
+const [formData, setFormData] = useState<RegistrationFormState>({
+  name: "",
+  village: "",
+  gp: "",
+  district: "",
+  block: "",
+  mobile: "",
+  aadhaarOrId: "",
+  category: "",
+});
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);

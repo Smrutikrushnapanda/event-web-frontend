@@ -41,9 +41,21 @@ import {
 
 export default function RegistrationPage() {
   const router = useRouter();
+
+
+  type RegistrationFormState = {
+  name: string;
+  village: string;
+  gp: string;
+  district: string;
+  block: string;
+  mobile: string;
+  aadhaarOrId: string;
+  category: string;
+};
   
   // ✅ FIX: Keep type annotation on same line
-const [formData, setFormData] = useState<Omit<CreateRegistrationData, "photo">>({
+const [formData, setFormData] = useState<RegistrationFormState>({
   name: "",
   village: "",
   gp: "",
