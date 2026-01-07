@@ -43,16 +43,17 @@ export default function RegistrationPage() {
   const router = useRouter();
   
   // ✅ FIX: Keep type annotation on same line
-  const [formData, setFormData] = useState<Omit<CreateRegistrationData, "photo">>({
-    name: "",
-    village: "",
-    gp: "",
-    district: "",
-    block: "",
-    mobile: "",
-    aadhaarOrId: "",
-    category: "",
-  });
+const [formData, setFormData] = useState<Omit<CreateRegistrationData, "photo">>({
+  name: "",
+  village: "",
+  gp: "",
+  district: "",
+  block: "",
+  mobile: "",
+  aadhaarOrId: "",
+  category: "",
+});
+
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
