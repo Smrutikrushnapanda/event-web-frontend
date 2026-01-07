@@ -266,10 +266,10 @@ export default function QRCodePage() {
               <CheckCircle2 className="w-16 h-16 text-green-600" />
             </div>
             <div>
-              <CardTitle className="text-3xl font-bold text-green-600">
+              <CardTitle className="text-3xl font-bold text-white">
                 Registration Successful!
               </CardTitle>
-              <CardDescription className="text-lg text-green-600">
+              <CardDescription className="text-lg text-white">
                 Your QR code has been generated successfully
               </CardDescription>
             </div>
