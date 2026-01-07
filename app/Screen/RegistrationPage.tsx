@@ -459,7 +459,7 @@ const [formData, setFormData] = useState<RegistrationFormState>({
               {/* Category */}
               <div className="space-y-2">
                 <Label htmlFor="category" className="text-base font-semibold">
-                  Department / Category <span className="text-red-500">*</span>
+                  Category <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.category}
