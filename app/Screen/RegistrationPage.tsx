@@ -214,6 +214,27 @@ export default function RegistrationPage() {
     setLoading(false);
   };
 
+
+  const resetForm = () => {
+  setFormData({
+    name: "",
+    village: "",
+    gp: "",
+    district: "",
+    block: "",
+    mobile: "",
+    aadhaarOrId: "",
+    category: "",
+  });
+
+  setPhoto(null);
+  setPhotoPreview(null);
+  setError("");
+  setShowVerification(false);
+  setSubmitting(false);
+};
+
+
   const handleFinalSubmit = async () => {
     setSubmitting(true);
     setError("");
@@ -226,8 +247,10 @@ export default function RegistrationPage() {
 
       const response = await registrationApi.create(data);
       
-      alert(`✅ Registration Successful!`);
-      
+      alert(`✅ Registration Successful! Ready for next registration.`);
+
+// reset form for next entry
+resetForm();
       
     } catch (err: any) {
       console.error("❌ Registration error:", err);
