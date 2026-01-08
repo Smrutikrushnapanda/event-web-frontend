@@ -226,9 +226,8 @@ export default function RegistrationPage() {
 
       const response = await registrationApi.create(data);
       
-      alert(`✅ Registration Successful!\n\nName: ${response.name}\nQR Code: ${response.qrCode}\n\nYou can now use your QR code to check-in at the event.`);
+      alert(`✅ Registration Successful!`);
       
-      router.push(`/qr-code/${response.qrCode}`);
       
     } catch (err: any) {
       console.error("❌ Registration error:", err);
