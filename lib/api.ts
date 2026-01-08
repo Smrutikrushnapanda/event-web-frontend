@@ -43,6 +43,32 @@ export interface AadhaarCheckResponse {
   name?: string;
 }
 
+// Volunteer Types
+export interface Volunteer {
+  id: string;
+  name: string;
+  mobile: string;
+  email: string;
+  age: number;
+  gender: string;
+  district: string;
+  block: string;
+  address: string;
+  photoUrl: string | null;
+  department: string;
+  experience: string;
+  status: "pending" | "approved" | "rejected";
+  assignedRole: string | null;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  createdAt: string;
+}
+
+export interface ApproveVolunteerData {
+  approvedBy: string;
+  assignedRole: string;
+}
+
 // Registration APIs
 export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
@@ -134,6 +160,52 @@ export const registrationApi = {
     const response = await api.get(`/registrations/${id}`);
     return response.data;
   },
+};
+
+// Volunteer APIs
+export const getVolunteers = async (): Promise<Volunteer[]> => {
+  try {
+    const response = await api.get("/volunteers");
+    return response.data;
+  } catch (error: any) {
+    console.error('Failed to fetch volunteers:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch volunteers');
+  }
+};
+
+export const approveVolunteer = async (
+  id: string,
+  data: ApproveVolunteerData
+): Promise<Volunteer> => {
+  try {
+    const response = await api.post(`/volunteers/${id}/approve`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Failed to approve volunteer:', error);
+    throw new Error(error.response?.data?.message || 'Failed to approve volunteer');
+  }
+};
+
+// Volunteer Login Types
+export interface LoginCredentials {
+  mobile: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  volunteer: Volunteer;
+}
+
+// Volunteer Login API
+export const loginVolunteer = async (credentials: LoginCredentials): Promise<LoginResponse> => {
+  try {
+    const response = await api.post('/volunteers/login', credentials);
+    return response.data;
+  } catch (error: any) {
+    console.error('Login failed:', error);
+    throw new Error(error.response?.data?.message || 'Login failed');
+  }
 };
 
 export default api;

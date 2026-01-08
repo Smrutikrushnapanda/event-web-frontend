@@ -127,26 +127,26 @@
     size: 8cm 8cm;
     margin: 0;
   }
-  
+
   body {
     margin: 0;
     padding: 0;
     background: white;
   }
-  
+
   * {
     margin: 0;
     padding: 0;
   }
-  
+
   .screen-only {
     display: none !important;
   }
-  
+
   .print-only {
     display: block !important;
   }
-  
+
   .print\:hidden {
     display: none !important;
   }

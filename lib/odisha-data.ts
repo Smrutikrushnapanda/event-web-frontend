@@ -38,7 +38,7 @@ export const odishaBlocks: Record<string, string[]> = {
   'Bargarh': ['Ambabhona', 'Attabira', 'Bargarh', 'Barpali', 'Bhatli', 'Bheden', 'Bijepur', 'Gaisilet', 'Jharbandh', 'Padampur', 'Paikmal', 'Sohela'],
   'Bhadrak': ['Basudevpur', 'Bhadrak', 'Bonth', 'Chandabali', 'Dhamnagar', 'Tihidi', 'Bhandaripokhari'],
   'Boudh': ['Boudh', 'Kantamal', 'Harbhanga', 'Purunakatak'],
-  'Cuttack': ['Athagad', 'Badamba', 'Banki', 'Baramba', 'Cuttack Sadar', 'Dampara', 'Kantapada', 'Mahanga', 'Narasinghpur', 'Niali', 'Salepur', 'Tangi-Choudwar', 'Tigiria'],
+  'Cuttack': ['Athagad', 'Badamba', 'Banki', 'Cuttack Sadar', 'Dampara', 'Kantapada', 'Mahanga', 'Narasinghpur', 'Niali', 'Salepur', 'Tangi-Choudwar', 'Tigiria'],
   'Deogarh': ['Bamra', 'Barkote', 'Deogarh', 'Reamal', 'Tileibani'],
   'Dhenkanal': ['Bhuban', 'Dhenkanal Sadar', 'Gandia', 'Gondia', 'Hindol', 'Kamakshyanagar', 'Kankadahad', 'Odapada', 'Parjang'],
   'Gajapati': ['Chandragiri', 'Gumma', 'Kasinagar', 'Mohana', 'Nuagada', 'Paralakhemundi', 'Rayagada', 'R.Udayagiri'],

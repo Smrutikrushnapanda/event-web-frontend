@@ -1,5 +1,5 @@
 import RegistrationForm from '@/components/RegistrationForm';
-import RegistrationPage from './Screen/RegistrationPage';
+import RegistrationPage from './(users)/Screen/RegistrationPage';
 
 export default function Home() {
   return (

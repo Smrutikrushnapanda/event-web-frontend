@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,11 +20,12 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         <div className="flex min-h-screen flex-col">
           <div className="print:hidden">
-            <Header />
+            
           </div>
+          <Toaster />
           <main className="flex-1">{children}</main>
           <div className="print:hidden">
-            <Footer />
+
           </div>
         </div>
       </body>
