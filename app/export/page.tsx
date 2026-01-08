@@ -9,7 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Download, FileSpreadsheet, Loader2, FileText, BarChart3 } from "lucide-react";
+import { 
+  Download, 
+  FileSpreadsheet, 
+  Loader2, 
+  FileText, 
+  BarChart3,
+  QrCode  // ← Add this import
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -56,6 +63,85 @@ export default function ExportPage() {
       console.error('Failed to fetch stats:', error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  // ✅ NEW: Export QR Code PDF (All)
+  const handleExportQRPDF = async () => {
+    setLoading(true);
+    try {
+      console.log('🚀 Generating QR code PDF...');
+      
+      const response = await fetch(`${API_URL}/registrations/export/qr-pdf`);
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      console.log('✅ Downloaded PDF:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `MPSO_QR_Codes_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      alert('✅ QR code PDF downloaded successfully!');
+    } catch (error: any) {
+      console.error("❌ QR PDF export error:", error);
+      alert(`Failed to export QR PDF: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ NEW: Export QR Code PDF (Block)
+  const handleExportBlockQRPDF = async () => {
+    if (!selectedBlock) {
+      alert("Please select a block first");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('🚀 Generating QR code PDF for block:', selectedBlock);
+      
+      const response = await fetch(
+        `${API_URL}/registrations/export/qr-pdf/${encodeURIComponent(selectedBlock)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      console.log('✅ Downloaded PDF:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${selectedBlock}_QR_Codes_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      alert(`✅ ${selectedBlock} QR code PDF downloaded successfully!`);
+    } catch (error: any) {
+      console.error("❌ QR PDF export error:", error);
+      alert(`Failed to export QR PDF: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -247,6 +333,40 @@ export default function ExportPage() {
           </Card>
         )}
 
+        {/* ✅ NEW: Export QR Code PDF (All) */}
+        <Card className="shadow-xl border-l-4 border-orange-500">
+          <CardHeader>
+            <CardTitle className="text-2xl text-gray-900 flex items-center gap-2">
+              <QrCode className="w-6 h-6 text-orange-600" />
+              Export QR Code Labels (PDF)
+            </CardTitle>
+            <CardDescription>
+              Download QR codes (10mm × 10mm) with names and blocks for printing
+              {stats && ` (${stats.totalRegistrations} labels)`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleExportQRPDF}
+              disabled={loading}
+              size="lg"
+              className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-lg h-14"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+                  Generating QR PDF...
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-6 h-6 mr-3" />
+                  Export All QR Codes to PDF
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Export All (Excel) */}
         <Card className="shadow-xl">
           <CardHeader>
@@ -342,24 +462,46 @@ export default function ExportPage() {
               </Select>
             </div>
 
-            <Button
-              onClick={handleExportBlock}
-              disabled={loading || !selectedBlock}
-              size="lg"
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg h-14"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-6 h-6 mr-3 animate-spin" />
-                  Generating Excel...
-                </>
-              ) : (
-                <>
-                  <Download className="w-6 h-6 mr-3" />
-                  Export Block to Excel
-                </>
-              )}
-            </Button>
+            {/* ✅ NEW: Two buttons - Excel and QR PDF */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Button
+                onClick={handleExportBlock}
+                disabled={loading || !selectedBlock}
+                size="lg"
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-14"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Excel...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5 mr-2" />
+                    Export Excel
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={handleExportBlockQRPDF}
+                disabled={loading || !selectedBlock}
+                size="lg"
+                className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 h-14"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    QR PDF...
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="w-5 h-5 mr-2" />
+                    Export QR PDF
+                  </>
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -374,25 +516,25 @@ export default function ExportPage() {
               <li className="flex items-start gap-2">
                 <span className="font-bold">1.</span>
                 <span>
-                  For large datasets (10K+), use <strong>Block-wise export</strong> for best performance
+                  Use <strong>QR Code PDF</strong> to print labels for event distribution (10mm × 10mm stickers)
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">2.</span>
                 <span>
-                  Use <strong>CSV export</strong> for quick downloads without QR images
+                  For large datasets (10K+), use <strong>Block-wise export</strong> for best performance
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">3.</span>
                 <span>
-                  Use <strong>Excel export</strong> when you need QR code images for printing
+                  Use <strong>CSV export</strong> for quick downloads without QR images
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">4.</span>
                 <span>
-                  Excel files with QR codes can be printed directly for event distribution
+                  Use <strong>Excel export</strong> when you need QR code images embedded in spreadsheet
                 </span>
               </li>
             </ul>
