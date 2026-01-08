@@ -43,6 +43,31 @@ export interface AadhaarCheckResponse {
   name?: string;
 }
 
+// Statistics Types
+export interface StatisticsResponse {
+  totalRegistrations: number;
+  totalAttendees: number;
+  totalDelegatesAttending: number;
+  checkIns: {
+    entry: number;
+    lunch: number;
+    dinner: number;
+    session: number;
+    total: number;
+  };
+  generatedAt: string;
+}
+
+export interface ExportStatsResponse {
+  totalRegistrations: number;
+  totalBlocks: number;
+  blockCounts: Record<string, number>;
+  estimatedExcelSizeMB: number;
+  estimatedCSVSizeKB: number;
+  estimatedExcelTimeMinutes: number;
+  recommendBlockWiseExport: boolean;
+}
+
 // Volunteer Types
 export interface Volunteer {
   id: string;
@@ -88,7 +113,6 @@ export const registrationApi = {
       formData.append('photo', data.photo);
     }
 
-    // Debug: Log FormData
     console.log('=== SENDING TO API ===');
     for (let pair of formData.entries()) {
       console.log(pair[0] + ':', pair[1]);
@@ -102,7 +126,7 @@ export const registrationApi = {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          timeout: 30000, // 30 seconds timeout
+          timeout: 30000,
         }
       );
       
@@ -112,19 +136,14 @@ export const registrationApi = {
       console.error('❌ Registration API Error:', error);
       
       if (error.response) {
-        // Server responded with error
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
         console.error('Response headers:', error.response.headers);
-        
-        // Throw specific error message from server
         throw new Error(error.response.data?.message || 'Registration failed');
       } else if (error.request) {
-        // Request made but no response
         console.error('No response received:', error.request);
         throw new Error('Server not responding. Please check if backend is running.');
       } else {
-        // Error in request setup
         console.error('Request setup error:', error.message);
         throw new Error('Failed to send registration request');
       }
@@ -159,6 +178,27 @@ export const registrationApi = {
   getById: async (id: string): Promise<RegistrationResponse> => {
     const response = await api.get(`/registrations/${id}`);
     return response.data;
+  },
+
+  // Statistics APIs
+  getStatistics: async (): Promise<StatisticsResponse> => {
+    try {
+      const response = await api.get('/registrations/statistics');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch statistics:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
+    }
+  },
+
+  getExportStats: async (): Promise<ExportStatsResponse> => {
+    try {
+      const response = await api.get('/registrations/export/stats');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch export stats:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch export stats');
+    }
   },
 };
 

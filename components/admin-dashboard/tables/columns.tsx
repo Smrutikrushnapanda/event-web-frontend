@@ -111,38 +111,38 @@ export const createColumns = (
       </Badge>
     ),
   },
-  {
-    id: "attendance",
-    header: "Attendance",
-    cell: ({ row }) => {
-      const checkIns = row.original.checkIns
-      const hasEntry = checkIns.some(c => c.type === "entry")
-      const hasLunch = checkIns.some(c => c.type === "lunch")
-      const hasDinner = checkIns.some(c => c.type === "dinner")
-      const hasSession = checkIns.some(c => c.type === "session")
+  // {
+  //   id: "attendance",
+  //   header: "Attendance",
+  //   cell: ({ row }) => {
+  //     const checkIns = row.original.checkIns
+  //     const hasEntry = checkIns.some(c => c.type === "entry")
+  //     const hasLunch = checkIns.some(c => c.type === "lunch")
+  //     const hasDinner = checkIns.some(c => c.type === "dinner")
+  //     const hasSession = checkIns.some(c => c.type === "session")
       
-      return (
-        <div className="flex gap-2 flex-wrap">
-          <Badge variant={hasEntry ? "default" : "secondary"} className="gap-1">
-            {hasEntry ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-            Entry
-          </Badge>
-          <Badge variant={hasLunch ? "default" : "secondary"} className="gap-1">
-            {hasLunch ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-            Lunch
-          </Badge>
-          <Badge variant={hasDinner ? "default" : "secondary"} className="gap-1">
-            {hasDinner ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-            Dinner
-          </Badge>
-          <Badge variant={hasSession ? "default" : "secondary"} className="gap-1">
-            {hasSession ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-            Session
-          </Badge>
-        </div>
-      )
-    },
-  },
+  //     return (
+  //       <div className="flex gap-2 flex-wrap">
+  //         <Badge variant={hasEntry ? "default" : "secondary"} className="gap-1">
+  //           {hasEntry ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+  //           Entry
+  //         </Badge>
+  //         <Badge variant={hasLunch ? "default" : "secondary"} className="gap-1">
+  //           {hasLunch ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+  //           Lunch
+  //         </Badge>
+  //         <Badge variant={hasDinner ? "default" : "secondary"} className="gap-1">
+  //           {hasDinner ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+  //           Dinner
+  //         </Badge>
+  //         <Badge variant={hasSession ? "default" : "secondary"} className="gap-1">
+  //           {hasSession ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+  //           Session
+  //         </Badge>
+  //       </div>
+  //     )
+  //   },
+  // },
   {
     accessorKey: "createdAt",
     header: "Registered On",
