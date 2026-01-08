@@ -19,9 +19,7 @@ export default function QRCodePage() {
   const params = useParams();
   const qrCode = params?.qrCode as string;
 
-  const [registration, setRegistration] = useState<RegistrationResponse | null>(
-    null
-  );
+  const [registration, setRegistration] = useState<RegistrationResponse | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,11 +32,9 @@ export default function QRCodePage() {
 
   const fetchRegistration = async () => {
     try {
-      console.log("Fetching registration for QR:", qrCode);
       const response = await registrationApi.getByQrCode(qrCode);
       setRegistration(response);
 
-      // Generate QR code data URL
       const dataUrl = await QRCode.toDataURL(response.qrCode, {
         width: 400,
         margin: 2,
@@ -60,25 +56,21 @@ export default function QRCodePage() {
   const handlePrint = async () => {
     if (!registration || !qrCodeDataUrl) return;
 
-    // Convert photo to base64 if it exists
     let photoBase64 = "";
     if (registration.photoUrl) {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const response = await fetch(`${baseUrl}${registration.photoUrl}`);
-
-    const blob = await response.blob();
-
-    photoBase64 = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    console.error("Failed to load photo for print:", error);
-  }
-}
-
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+        const response = await fetch(`${baseUrl}${registration.photoUrl}`);
+        const blob = await response.blob();
+        photoBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error("Failed to load photo for print:", error);
+      }
+    }
 
     const printContent = `
       <!DOCTYPE html>
@@ -92,7 +84,7 @@ export default function QRCodePage() {
           }
           body {
             margin: 0;
-            padding: 10;
+            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -164,29 +156,17 @@ export default function QRCodePage() {
             color: #666;
             max-width: 90%;
           }
-          .footer {
-            margin-top: 8px;
-            font-size: 8px;
-            text-align: center;
-            color: #888;
-          }
         </style>
       </head>
       <body>
         <div class="sticker">
           <div class="header">MPSO EVENT 2025</div>
-          ${
-            photoBase64
-              ? `<img src="${photoBase64}" class="photo" alt="Photo" />`
-              : ""
-          }
+          ${photoBase64 ? `<img src="${photoBase64}" class="photo" alt="Photo" />` : ""}
           <div class="name">${registration.name}</div>
           <img src="${qrCodeDataUrl}" class="qr-code" alt="QR Code" />
           <div class="code">${registration.qrCode}</div>
           <div class="location">${registration.block} Block</div>
-          <div class="details">${registration.village}, ${
-      registration.district
-    }</div>
+          <div class="details">${registration.village}, ${registration.district}</div>
         </div>
       </body>
       </html>
@@ -260,8 +240,8 @@ export default function QRCodePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-3xl mx-auto">
-        <Card className="shadow-2xl border-0 print:shadow-none print:border-0">
-          <CardHeader className="text-center space-y-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-t-lg print:hidden">
+        <Card className="shadow-2xl border-0">
+          <CardHeader className="text-center space-y-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-t-lg">
             <div className="mx-auto w-20 h-20 bg-white rounded-full flex items-center justify-center">
               <CheckCircle2 className="w-16 h-16 text-green-600" />
             </div>
@@ -281,7 +261,6 @@ export default function QRCodePage() {
               <div className="flex flex-col items-center space-y-4">
                 {registration.photoUrl && (
                   <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
-                    {/* ✅ Using regular img tag instead of Next.js Image */}
                     <img
                       src={`${process.env.NEXT_PUBLIC_API_URL}${registration.photoUrl}`}
                       alt="Profile"
@@ -323,77 +302,28 @@ export default function QRCodePage() {
             </div>
 
             {/* Registration Details */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 space-y-4 print:hidden">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 space-y-4">
               <h3 className="font-bold text-xl text-gray-900 border-b-2 border-blue-500 pb-2">
                 Registration Details
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">Name</p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.name}
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">Mobile</p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.mobile}
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">Village</p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.village}
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">GP</p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.gp}
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">District</p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.district}
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">Block</p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.block}
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">Category</p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.category}
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <p className="text-sm text-gray-600 font-medium">
-                    Aadhaar/ID
-                  </p>
-                  <p className="font-semibold text-gray-900">
-                    {registration.aadhaarOrId.replace(
-                      /(\d{4})(\d{4})(\d{4})/,
-                      "$1 $2 $3"
-                    )}
-                  </p>
-                </div>
+                <DetailBox label="Name" value={registration.name} />
+                <DetailBox label="Mobile" value={registration.mobile} />
+                <DetailBox label="Village" value={registration.village} />
+                <DetailBox label="GP" value={registration.gp} />
+                <DetailBox label="District" value={registration.district} />
+                <DetailBox label="Block" value={registration.block} />
+                <DetailBox label="Category" value={registration.category} />
+                <DetailBox 
+                  label="Aadhaar/ID" 
+                  value={registration.aadhaarOrId.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")} 
+                />
               </div>
             </div>
 
             {/* Important Notice */}
-            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-500 rounded-lg p-4 text-sm text-yellow-900 print:hidden">
+            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-500 rounded-lg p-4 text-sm text-yellow-900">
               <p className="font-bold mb-2 flex items-center gap-2">
                 <span className="text-2xl">📱</span>
                 Important Instructions:
@@ -407,7 +337,7 @@ export default function QRCodePage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button
                 onClick={handlePrint}
                 size="lg"
@@ -440,6 +370,15 @@ export default function QRCodePage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function DetailBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-sm">
+      <p className="text-sm text-gray-600 font-medium">{label}</p>
+      <p className="font-semibold text-gray-900">{value}</p>
     </div>
   );
 }

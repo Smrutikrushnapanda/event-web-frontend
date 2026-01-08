@@ -29,9 +29,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Upload, User, CheckCircle, AlertCircle, Edit, ArrowLeft } from "lucide-react";
+import { CheckCircle, AlertCircle, ArrowLeft, Search, User, Phone, MapPin, Award } from "lucide-react";
 import Image from "next/image";
 import {
   odishaDistricts,
@@ -68,18 +67,16 @@ export default function RegistrationPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // ✅ NEW: Verification step state
   const [showVerification, setShowVerification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Already Registered Dialog State
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [aadhaarCheck, setAadhaarCheck] = useState("");
-  const [checkingAadhaar, setCheckingAadhaar] = useState(false);
-  const [aadhaarError, setAadhaarError] = useState("");
+  // ✅ Aadhaar Lookup States
+  const [aadhaarLookup, setAadhaarLookup] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [foundRegistration, setFoundRegistration] = useState<any>(null);
 
-  // Get available blocks based on selected district
   const availableBlocks = formData.district ? (odishaBlocks[formData.district] || []) : [];
 
   const handleChange = (name: string, value: string) => {
@@ -113,32 +110,40 @@ export default function RegistrationPage() {
     }
   };
 
-  const handleCheckAadhaar = async () => {
-    if (!aadhaarCheck || aadhaarCheck.length !== 12) {
-      setAadhaarError("Please enter a valid 12-digit Aadhaar number");
+  // ✅ Aadhaar Lookup Function
+  const handleAadhaarLookup = async () => {
+    if (!aadhaarLookup.trim()) {
+      setLookupError("Please enter Aadhaar number");
       return;
     }
 
-    setCheckingAadhaar(true);
-    setAadhaarError("");
-    
+    if (aadhaarLookup.length !== 12 || !/^\d{12}$/.test(aadhaarLookup)) {
+      setLookupError("Aadhaar number must be exactly 12 digits");
+      return;
+    }
+
+    setLookupLoading(true);
+    setLookupError("");
+
     try {
-      const response = await registrationApi.checkAadhaar(aadhaarCheck);
+      const response = await registrationApi.checkAadhaar(aadhaarLookup);
       
       if (response.exists) {
-        setIsDialogOpen(false);
-        router.push(`/qr-code/${response.qrCode}`);
+        // Fetch full registration details
+        const registration = await registrationApi.getByQrCode(response.qrCode);
+        setFoundRegistration(registration);
+        setShowDetailsModal(true);
       } else {
-        setAadhaarError("No registration found with this Aadhaar number. Please register first.");
+        setLookupError("No registration found with this Aadhaar number");
       }
     } catch (err: any) {
-      setAadhaarError(err.response?.data?.message || "Error checking Aadhaar number");
+      console.error("Lookup error:", err);
+      setLookupError("Failed to check registration. Please try again.");
     } finally {
-      setCheckingAadhaar(false);
+      setLookupLoading(false);
     }
   };
 
-  // ✅ NEW: Handle form validation and show verification
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -205,19 +210,13 @@ export default function RegistrationPage() {
       return;
     }
 
-    // ✅ Show verification step instead of submitting directly
     setShowVerification(true);
     setLoading(false);
   };
 
-  // ✅ NEW: Handle final submission after verification
   const handleFinalSubmit = async () => {
     setSubmitting(true);
     setError("");
-
-    console.log("=== FINAL SUBMISSION ===");
-    console.log("Form Data:", formData);
-    console.log("Has Photo:", !!photo);
 
     try {
       const data: CreateRegistrationData = {
@@ -225,30 +224,11 @@ export default function RegistrationPage() {
         ...(photo && { photo }),
       };
 
-      console.log("Submitting registration...");
       const response = await registrationApi.create(data);
-      console.log("✅ Registration successful:", response);
       
-      // ✅ Show success message instead of redirecting
       alert(`✅ Registration Successful!\n\nName: ${response.name}\nQR Code: ${response.qrCode}\n\nYou can now use your QR code to check-in at the event.`);
       
-      // Reset form
-      setFormData({
-        name: "",
-        village: "",
-        gp: "",
-        district: "",
-        block: "",
-        mobile: "",
-        aadhaarOrId: "",
-        category: "",
-      });
-      setPhoto(null);
-      setPhotoPreview(null);
-      setShowVerification(false);
-      
-      // Optional: Redirect to home or registrations page
-      router.push('/');
+      router.push(`/qr-code/${response.qrCode}`);
       
     } catch (err: any) {
       console.error("❌ Registration error:", err);
@@ -261,7 +241,6 @@ export default function RegistrationPage() {
         errorMessage = err.response.data.message;
       }
       
-      // ✅ Show error message
       setError(errorMessage);
       alert(`❌ Registration Failed!\n\n${errorMessage}`);
       setShowVerification(false);
@@ -270,13 +249,106 @@ export default function RegistrationPage() {
     }
   };
 
-  // ✅ NEW: Handle back to edit
   const handleBackToEdit = () => {
     setShowVerification(false);
     setError("");
   };
 
-  // ✅ NEW: Verification/Review Screen
+  // ✅ Registration Details Modal
+  const RegistrationDetailsModal = () => {
+    if (!foundRegistration) return null;
+
+    return (
+      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-green-700 flex items-center gap-2">
+              <CheckCircle className="w-7 h-7" />
+              Registration Found!
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              Your registration details for MPSO Event
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Photo */}
+            {foundRegistration.photoUrl && (
+              <div className="flex justify-center">
+                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-green-500 shadow-lg">
+                  <Image
+                    src={`${process.env.NEXT_PUBLIC_API_URL}${foundRegistration.photoUrl}`}
+                    alt={foundRegistration.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DetailCard 
+                icon={<User className="w-5 h-5 text-blue-600" />}
+                label="Full Name" 
+                value={foundRegistration.name} 
+              />
+              <DetailCard 
+                icon={<Phone className="w-5 h-5 text-blue-600" />}
+                label="Mobile Number" 
+                value={foundRegistration.mobile} 
+              />
+              <DetailCard 
+                icon={<Award className="w-5 h-5 text-blue-600" />}
+                label="Aadhaar Number" 
+                value={foundRegistration.aadhaarOrId} 
+              />
+              <DetailCard 
+                icon={<Award className="w-5 h-5 text-blue-600" />}
+                label="Category" 
+                value={foundRegistration.category} 
+              />
+              <DetailCard 
+                icon={<MapPin className="w-5 h-5 text-blue-600" />}
+                label="Village" 
+                value={foundRegistration.village} 
+              />
+              <DetailCard 
+                icon={<MapPin className="w-5 h-5 text-blue-600" />}
+                label="Gram Panchayat" 
+                value={foundRegistration.gp} 
+              />
+              <DetailCard 
+                icon={<MapPin className="w-5 h-5 text-blue-600" />}
+                label="District" 
+                value={foundRegistration.district} 
+              />
+              <DetailCard 
+                icon={<MapPin className="w-5 h-5 text-blue-600" />}
+                label="Block" 
+                value={foundRegistration.block} 
+              />
+            </div>
+
+            <div className="pt-4">
+              <Button 
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setAadhaarLookup("");
+                  setFoundRegistration(null);
+                }}
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Verification/Review Screen
   if (showVerification) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
@@ -302,7 +374,6 @@ export default function RegistrationPage() {
                 </div>
               )}
 
-              {/* Photo Preview */}
               {photoPreview && (
                 <div className="flex justify-center">
                   <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
@@ -316,7 +387,6 @@ export default function RegistrationPage() {
                 </div>
               )}
 
-              {/* Details Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <DetailItem label="Full Name" value={formData.name} />
                 <DetailItem label="Mobile Number" value={formData.mobile} />
@@ -328,7 +398,6 @@ export default function RegistrationPage() {
                 <DetailItem label="Block" value={formData.block} />
               </div>
 
-              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Button
                   variant="outline"
@@ -370,7 +439,7 @@ export default function RegistrationPage() {
     );
   }
 
-  // ✅ Original Form (unchanged)
+  // Original Form
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-3xl mx-auto">
@@ -383,57 +452,53 @@ export default function RegistrationPage() {
           </CardHeader>
 
           <CardContent className="pt-6">
-            {/* Already Registered Button */}
+            {/* ✅ Aadhaar Lookup Section */}
             <div className="mb-6">
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-2 border-blue-500 hover:bg-blue-50 text-blue-700 font-semibold"
-                  >
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    Already Registered? Get Your QR Code
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle className="text-xl">Retrieve Your QR Code</DialogTitle>
-                    <DialogDescription>
-                      Enter your 12-digit Aadhaar number to retrieve your registration QR code
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="aadhaar-check">Aadhaar Number</Label>
+              <Card className="border-2 border-green-200 bg-green-50">
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
+                    <Search className="w-5 h-5" />
+                    Already Registered? Check Your Details
+                  </h3>
+                  
+                  <div className="flex gap-3">
+                    <div className="flex-1">
                       <Input
-                        id="aadhaar-check"
                         type="tel"
-                        value={aadhaarCheck}
+                        placeholder="Enter your 12-digit Aadhaar number"
+                        value={aadhaarLookup}
                         onChange={(e) => {
-                          setAadhaarCheck(e.target.value.replace(/\D/g, ''));
-                          setAadhaarError("");
+                          setAadhaarLookup(e.target.value.replace(/\D/g, ''));
+                          setLookupError("");
                         }}
-                        placeholder="Enter 12-digit Aadhaar number"
                         maxLength={12}
-                        className={aadhaarError ? "border-red-500" : ""}
+                        className="h-12 text-base"
                       />
-                      {aadhaarError && (
-                        <p className="text-sm text-red-600 flex items-center gap-1">
-                          <AlertCircle className="w-4 h-4" />
-                          {aadhaarError}
-                        </p>
-                      )}
                     </div>
                     <Button
-                      onClick={handleCheckAadhaar}
-                      disabled={checkingAadhaar || aadhaarCheck.length !== 12}
-                      className="w-full"
+                      onClick={handleAadhaarLookup}
+                      disabled={lookupLoading}
+                      className="h-12 px-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                     >
-                      {checkingAadhaar ? "Checking..." : "Get QR Code"}
+                      {lookupLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Search className="w-5 h-5 mr-2" />
+                          Check
+                        </>
+                      )}
                     </Button>
                   </div>
-                </DialogContent>
-              </Dialog>
+
+                  {lookupError && (
+                    <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {lookupError}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
             <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent mb-6" />
@@ -447,6 +512,7 @@ export default function RegistrationPage() {
                   </p>
                 </div>
               )}
+
 
               {/* Name */}
               <div className="space-y-2">
@@ -503,9 +569,7 @@ export default function RegistrationPage() {
                     value={formData.district}
                     onValueChange={handleDistrictChange}
                   >
-                    <SelectTrigger 
-                      className={`w-full h-11 ${!formData.district && error ? "border-red-500" : ""}`}
-                    >
+                    <SelectTrigger className="w-full h-11">
                       <SelectValue placeholder="Select district" />
                     </SelectTrigger>
                     <SelectContent>
@@ -526,10 +590,7 @@ export default function RegistrationPage() {
                     onValueChange={(value) => handleChange("block", value)}
                     disabled={!formData.district}
                   >
-                    <SelectTrigger
-                      className={`w-full h-11 ${!formData.block && error ? "border-red-500" : ""}`}
-                      disabled={!formData.district}
-                    >
+                    <SelectTrigger className="w-full h-11" disabled={!formData.district}>
                       <SelectValue
                         placeholder={formData.district ? "Select block" : "Select district first"}
                       />
@@ -588,9 +649,7 @@ export default function RegistrationPage() {
                   value={formData.category}
                   onValueChange={(value) => handleChange("category", value)}
                 >
-                  <SelectTrigger 
-                    className={`w-full h-11 ${!formData.category && error ? "border-red-500" : ""}`}
-                  >
+                  <SelectTrigger className="w-full h-11">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
@@ -603,7 +662,6 @@ export default function RegistrationPage() {
                 </Select>
               </div>
 
-
               <Button 
                 type="submit" 
                 className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" 
@@ -615,16 +673,51 @@ export default function RegistrationPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ✅ Registration Details Modal */}
+      <RegistrationDetailsModal />
     </div>
   );
 }
 
-// ✅ Helper component for displaying details
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
       <p className="text-sm text-gray-600 font-medium mb-1">{label}</p>
       <p className="text-base font-semibold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+// ✅ Detail Card Component for Modal
+function DetailCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="bg-white rounded-lg p-4 border-2 border-gray-200 hover:border-blue-300 transition-colors">
+      <div className="flex items-center gap-2 mb-2">
+        {icon}
+        <p className="text-sm text-gray-600 font-medium">{label}</p>
+      </div>
+      <p className="text-base font-semibold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+// ✅ Status Badge Component
+function StatusBadge({ label, status }: { label: string; status?: boolean }) {
+  return (
+    <div className={`flex items-center gap-2 p-2 rounded-lg ${
+      status ? 'bg-green-100 border border-green-300' : 'bg-gray-100 border border-gray-300'
+    }`}>
+      {status ? (
+        <CheckCircle className="w-4 h-4 text-green-600" />
+      ) : (
+        <div className="w-4 h-4 rounded-full border-2 border-gray-400" />
+      )}
+      <span className={`text-xs font-semibold ${
+        status ? 'text-green-700' : 'text-gray-600'
+      }`}>
+        {label}
+      </span>
     </div>
   );
 }
