@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { LayoutDashboard, CheckSquare, ChevronDown } from "lucide-react"
+import { LayoutDashboard, CheckSquare, ChevronDown, Ticket } from "lucide-react" // ✅ Added Ticket icon
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -37,6 +37,12 @@ const menuItems = [
     title: "Approvals",
     icon: CheckSquare,
     href: "/admin/approvals",
+  },
+  // ✅ NEW: Guest Pass Menu Item
+  {
+    title: "Guest Passes",
+    icon: Ticket,
+    href: "/admin/guest-passes",
   },
 ]
 
