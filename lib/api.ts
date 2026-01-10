@@ -94,12 +94,97 @@ export interface ApproveVolunteerData {
   assignedRole: string;
 }
 
-// Registration APIs
+// ============================================
+// GUEST PASSES TYPES
+// ============================================
+
+export interface GeneratePassesData {
+  delegates?: number;
+  vvip?: number;
+  visitors?: number;
+}
+
+export interface GeneratePassesResponse {
+  generated: number;
+  categories: {
+    [key: string]: {
+      count: number;
+      range: string;
+    };
+  };
+}
+
+export interface GuestPass {
+  id: string;
+  qrCode: string;
+  category: 'DELEGATE' | 'VVIP' | 'VISITOR';
+  sequenceNumber: number;
+  isAssigned: boolean;
+  name?: string;
+  mobile?: string;
+  assignedBy?: string;
+  assignedAt?: string;
+  createdAt: string;
+  hasEntryCheckIn: boolean;
+  hasLunchCheckIn: boolean;
+  hasDinnerCheckIn: boolean;
+  hasSessionCheckIn: boolean;
+  checkIns?: Array<{
+    id: string;
+    type: 'entry' | 'lunch' | 'dinner' | 'session';
+    scannedAt: string;
+    scannedBy: string;
+  }>;
+}
+
+export interface AssignDetailsData {
+  name: string;
+  mobile: string;
+  assignedBy: string;
+}
+
+export interface GuestCheckInData {
+  type: 'entry' | 'lunch' | 'dinner' | 'session';
+  scannedBy?: string;
+}
+
+export interface GuestStatisticsResponse {
+  totalPasses: number;
+  totalAssigned: number;
+  totalUnassigned: number;
+  assignmentPercentage: string;
+  byCategory: {
+    DELEGATE: number;
+    VVIP: number;
+    VISITOR: number;
+  };
+  checkIns: {
+    entry: number;
+    lunch: number;
+    dinner: number;
+    session: number;
+    total: number;
+  };
+  generatedAt: string;
+  categoryBreakdown?: Array<{
+    category: string;
+    totalPasses: string;
+    assignedPasses: string;
+    entryCheckIns: string;
+    lunchCheckIns: string;
+    dinnerCheckIns: string;
+    sessionCheckIns: string;
+  }>;
+}
+
+// ============================================
+// REGISTRATION APIs
+// ============================================
+
 export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
     const formData = new FormData();
     
-    // Append all fields
     formData.append('name', data.name.trim());
     formData.append('village', data.village.trim());
     formData.append('gp', data.gp.trim());
@@ -111,11 +196,6 @@ export const registrationApi = {
     
     if (data.photo) {
       formData.append('photo', data.photo);
-    }
-
-    console.log('=== SENDING TO API ===');
-    for (let pair of formData.entries()) {
-      console.log(pair[0] + ':', pair[1]);
     }
 
     try {
@@ -130,21 +210,13 @@ export const registrationApi = {
         }
       );
       
-      console.log('✅ Registration successful:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ Registration API Error:', error);
-      
       if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
         throw new Error(error.response.data?.message || 'Registration failed');
       } else if (error.request) {
-        console.error('No response received:', error.request);
         throw new Error('Server not responding. Please check if backend is running.');
       } else {
-        console.error('Request setup error:', error.message);
         throw new Error('Failed to send registration request');
       }
     }
@@ -157,7 +229,6 @@ export const registrationApi = {
       });
       return response.data;
     } catch (error: any) {
-      console.error('Aadhaar check error:', error);
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
       }
@@ -180,13 +251,11 @@ export const registrationApi = {
     return response.data;
   },
 
-  // Statistics APIs
   getStatistics: async (): Promise<StatisticsResponse> => {
     try {
       const response = await api.get('/registrations/statistics');
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch statistics:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
     }
   },
@@ -196,19 +265,20 @@ export const registrationApi = {
       const response = await api.get('/registrations/export/stats');
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch export stats:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch export stats');
     }
   },
 };
 
-// Volunteer APIs
+// ============================================
+// VOLUNTEER APIs
+// ============================================
+
 export const getVolunteers = async (): Promise<Volunteer[]> => {
   try {
     const response = await api.get("/volunteers");
     return response.data;
   } catch (error: any) {
-    console.error('Failed to fetch volunteers:', error);
     throw new Error(error.response?.data?.message || 'Failed to fetch volunteers');
   }
 };
@@ -221,12 +291,10 @@ export const approveVolunteer = async (
     const response = await api.post(`/volunteers/${id}/approve`, data);
     return response.data;
   } catch (error: any) {
-    console.error('Failed to approve volunteer:', error);
     throw new Error(error.response?.data?.message || 'Failed to approve volunteer');
   }
 };
 
-// Volunteer Login Types
 export interface LoginCredentials {
   mobile: string;
   password: string;
@@ -237,15 +305,89 @@ export interface LoginResponse {
   volunteer: Volunteer;
 }
 
-// Volunteer Login API
 export const loginVolunteer = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   try {
     const response = await api.post('/volunteers/login', credentials);
     return response.data;
   } catch (error: any) {
-    console.error('Login failed:', error);
     throw new Error(error.response?.data?.message || 'Login failed');
   }
+};
+
+// ============================================
+// GUEST PASSES APIs
+// ============================================
+
+export const guestPassApi = {
+  // Generate passes
+  generate: async (data: GeneratePassesData): Promise<GeneratePassesResponse> => {
+    try {
+      const response = await api.post('/guest-passes/generate', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Generate passes error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to generate passes');
+    }
+  },
+
+  // Assign details to a pass
+  assignDetails: async (qrCode: string, data: AssignDetailsData): Promise<GuestPass> => {
+    try {
+      const response = await api.post(`/guest-passes/${qrCode}/assign`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Assign details error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to assign details');
+    }
+  },
+
+  // Fast check-in
+  fastCheckIn: async (qrCode: string, data: GuestCheckInData): Promise<any> => {
+    try {
+      const response = await api.post(`/guest-passes/fast-checkin/${qrCode}`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Check-in error:', error);
+      throw new Error(error.response?.data?.message || 'Check-in failed');
+    }
+  },
+
+  // Get all passes
+  getAll: async (filters?: { category?: string; isAssigned?: boolean }): Promise<GuestPass[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.category) params.append('category', filters.category);
+      if (filters?.isAssigned !== undefined) params.append('isAssigned', String(filters.isAssigned));
+      
+      const response = await api.get(`/guest-passes?${params.toString()}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Get passes error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch passes');
+    }
+  },
+
+  // Get pass by QR code
+  getByQrCode: async (qrCode: string): Promise<GuestPass> => {
+    try {
+      const response = await api.get(`/guest-passes/qr/${qrCode}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Get pass error:', error);
+      throw new Error(error.response?.data?.message || 'Pass not found');
+    }
+  },
+
+  // Get statistics
+  getStatistics: async (includeBreakdown = false): Promise<GuestStatisticsResponse> => {
+    try {
+      const response = await api.get(`/guest-passes/statistics?includeBreakdown=${includeBreakdown}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Get statistics error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
+    }
+  },
 };
 
 export default api;
