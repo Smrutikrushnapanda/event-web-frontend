@@ -94,6 +94,75 @@ export interface ApproveVolunteerData {
   assignedRole: string;
 }
 
+// ✅ Guest Pass Types
+export interface GuestPass {
+  id: string;
+  qrCode: string;
+  category: 'DELEGATE' | 'VVIP' | 'VISITOR';
+  sequenceNumber: number;
+  isAssigned: boolean;
+  name?: string;
+  mobile?: string;
+  assignedBy?: string;
+  assignedAt?: string;
+  hasEntryCheckIn: boolean;
+  hasLunchCheckIn: boolean;
+  hasDinnerCheckIn: boolean;
+  hasSessionCheckIn: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GuestStatisticsResponse {
+  totalPasses: number;
+  totalAssigned: number;
+  totalUnassigned: number;
+  assignmentPercentage: number;
+  byCategory: {
+    DELEGATE: number;
+    VVIP: number;
+    VISITOR: number;
+  };
+  checkIns: {
+    entry: number;
+    lunch: number;
+    dinner: number;
+    session: number;
+    total: number;
+  };
+  blockWise?: Record<string, {
+    total: number;
+    assigned: number;
+    checkIns: {
+      entry: number;
+      lunch: number;
+      dinner: number;
+      session: number;
+    };
+  }>;
+}
+
+export interface GenerateGuestPassesData {
+  delegates: number;
+  vvip: number;
+  visitors: number;
+}
+
+export interface GenerateGuestPassesResponse {
+  generated: number;
+  categories: {
+    DELEGATE: { count: number; range: string };
+    VVIP: { count: number; range: string };
+    VISITOR: { count: number; range: string };
+  };
+}
+
+export interface AssignGuestPassData {
+  name: string;
+  mobile: string;
+  assignedBy: string;
+}
+
 // Registration APIs
 export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
@@ -198,6 +267,141 @@ export const registrationApi = {
     } catch (error: any) {
       console.error('Failed to fetch export stats:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch export stats');
+    }
+  },
+};
+
+// ✅ Guest Pass APIs
+export const guestPassApi = {
+  // Get all guest passes
+  getAll: async (): Promise<GuestPass[]> => {
+    try {
+      const response = await api.get('/guest-passes');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch guest passes:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch guest passes');
+    }
+  },
+
+  // Get statistics
+  getStatistics: async (includeBlockWise: boolean = false): Promise<GuestStatisticsResponse> => {
+    try {
+      const url = includeBlockWise 
+        ? '/guest-passes/statistics?includeBlockWise=true'
+        : '/guest-passes/statistics';
+      const response = await api.get(url);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch guest pass statistics:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
+    }
+  },
+
+  // Generate guest passes
+  generate: async (data: GenerateGuestPassesData): Promise<GenerateGuestPassesResponse> => {
+    try {
+      const response = await api.post('/guest-passes/generate', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to generate guest passes:', error);
+      throw new Error(error.response?.data?.message || 'Failed to generate passes');
+    }
+  },
+
+  // Assign details to a guest pass
+  assignDetails: async (qrCode: string, data: AssignGuestPassData): Promise<GuestPass> => {
+    try {
+      const response = await api.post(`/guest-passes/${qrCode}/assign`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to assign guest pass details:', error);
+      throw new Error(error.response?.data?.message || 'Failed to assign details');
+    }
+  },
+
+  // Get guest pass by QR code
+  getByQrCode: async (qrCode: string): Promise<GuestPass> => {
+    try {
+      const response = await api.get(`/guest-passes/qr/${qrCode}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch guest pass:', error);
+      throw new Error(error.response?.data?.message || 'Guest pass not found');
+    }
+  },
+
+  // Fast check-in
+  fastCheckIn: async (qrCode: string, data: { type: string; scannedBy?: string }) => {
+    try {
+      const response = await api.post(`/guest-passes/fast-checkin/${qrCode}`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to check-in guest pass:', error);
+      throw new Error(error.response?.data?.message || 'Check-in failed');
+    }
+  },
+
+  // Export CSV
+  exportCSV: async (): Promise<void> => {
+    try {
+      const response = await api.get('/guest-passes/export/csv', {
+        responseType: 'blob',
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `guest-passes-${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      console.error('Failed to export CSV:', error);
+      throw new Error(error.response?.data?.message || 'Export failed');
+    }
+  },
+
+  // Export Excel
+  exportExcel: async (): Promise<void> => {
+    try {
+      const response = await api.get('/guest-passes/export/excel', {
+        responseType: 'blob',
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `guest-passes-${Date.now()}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      console.error('Failed to export Excel:', error);
+      throw new Error(error.response?.data?.message || 'Export failed');
+    }
+  },
+
+  // Export QR PDF
+  exportQRPdf: async (): Promise<void> => {
+    try {
+      const response = await api.get('/guest-passes/export/qr-pdf', {
+        responseType: 'blob',
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `guest-passes-qr-${Date.now()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      console.error('Failed to export QR PDF:', error);
+      throw new Error(error.response?.data?.message || 'Export failed');
     }
   },
 };
