@@ -394,4 +394,9 @@ export const odishaCategory = [
   "Fishers",
   "Fish Seed Producers",
   "Fish Producers",
+  "Dairy Farmer",
+  "Fodder Farmer",
+  "Brackish Water Fish Farmer",
+  "Bio floc Farmer",
+  "Marine Fish Farmer"
 ];
