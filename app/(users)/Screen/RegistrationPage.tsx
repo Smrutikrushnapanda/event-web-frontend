@@ -28,7 +28,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CheckCircle, AlertCircle, ArrowLeft, Search, User, Phone, MapPin, Award, CreditCard, Home } from "lucide-react";
-import Image from "next/image";
 import {
   odishaDistricts,
   odishaBlocks,
@@ -45,6 +44,8 @@ export default function RegistrationPage() {
     block: string;
     mobile: string;
     aadhaarOrId: string;
+    gender: 'male' | 'female' | 'others' | '';
+    caste: 'general' | 'obc' | 'sc' | 'st' | '';
     category: string;
   };
 
@@ -55,11 +56,11 @@ export default function RegistrationPage() {
     block: "",
     mobile: "",
     aadhaarOrId: "",
+    gender: "",
+    caste: "",
     category: "",
   });
 
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showVerification, setShowVerification] = useState(false);
@@ -88,26 +89,8 @@ export default function RegistrationPage() {
     if (error) setError("");
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError("Photo size should be less than 5MB");
-        return;
-      }
-      
-      setPhoto(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // ✅ FIXED: Aadhaar Lookup - NO TRIM()
+  // Aadhaar Lookup
   const handleAadhaarLookup = async () => {
-    // ✅ Changed from: if (!aadhaarLookup.trim())
     if (!aadhaarLookup || aadhaarLookup.length === 0) {
       setLookupError("Please enter Aadhaar number");
       return;
@@ -145,20 +128,18 @@ export default function RegistrationPage() {
     }
   };
 
-  // ✅ FIXED: Form Submit - NO TRIM()
+  // Form Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // ✅ Changed from: if (!formData.name || !formData.name.trim())
     if (!formData.name || formData.name.length === 0) {
       setError("Please enter your name");
       setLoading(false);
       return;
     }
 
-    // ✅ Changed from: if (!formData.village || !formData.village.trim())
     if (!formData.village || formData.village.length === 0) {
       setError("Please enter your village");
       setLoading(false);
@@ -173,6 +154,18 @@ export default function RegistrationPage() {
 
     if (!formData.block) {
       setError("Please select a block");
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.gender) {
+      setError("Please select gender");
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.caste) {
+      setError("Please select caste");
       setLoading(false);
       return;
     }
@@ -219,11 +212,11 @@ export default function RegistrationPage() {
       block: "",
       mobile: "",
       aadhaarOrId: "",
+      gender: "",
+      caste: "",
       category: "",
     });
 
-    setPhoto(null);
-    setPhotoPreview(null);
     setError("");
     setShowVerification(false);
     setSubmitting(false);
@@ -235,8 +228,15 @@ export default function RegistrationPage() {
 
     try {
       const data: CreateRegistrationData = {
-        ...formData,
-        ...(photo && { photo }),
+        name: formData.name,
+        village: formData.village,
+        district: formData.district,
+        block: formData.block,
+        mobile: formData.mobile,
+        aadhaarOrId: formData.aadhaarOrId,
+        gender: formData.gender as 'male' | 'female' | 'others',
+        caste: formData.caste as 'general' | 'obc' | 'sc' | 'st',
+        category: formData.category,
       };
 
       const response = await registrationApi.create(data);
@@ -286,19 +286,6 @@ export default function RegistrationPage() {
           </DialogHeader>
 
           <div className="space-y-6 mt-4">
-            {foundRegistration.photoUrl && (
-              <div className="flex justify-center">
-                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-green-500 shadow-lg">
-                  <Image
-                    src={`${process.env.NEXT_PUBLIC_API_URL}${foundRegistration.photoUrl}`}
-                    alt={foundRegistration.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <DetailCard 
                 icon={<User className="w-5 h-5 text-blue-600" />}
@@ -314,6 +301,16 @@ export default function RegistrationPage() {
                 icon={<CreditCard className="w-5 h-5 text-blue-600" />}
                 label="Aadhaar Number" 
                 value={foundRegistration.aadhaarOrId || "Not available"}
+              />
+              <DetailCard 
+                icon={<User className="w-5 h-5 text-blue-600" />}
+                label="Gender" 
+                value={foundRegistration.gender?.toUpperCase() || "Not provided"}
+              />
+              <DetailCard 
+                icon={<Award className="w-5 h-5 text-blue-600" />}
+                label="Caste" 
+                value={foundRegistration.caste?.toUpperCase() || "Not provided"}
               />
               <DetailCard 
                 icon={<Award className="w-5 h-5 text-blue-600" />}
@@ -381,19 +378,6 @@ export default function RegistrationPage() {
               </div>
             )}
 
-            {photoPreview && (
-              <div className="flex justify-center">
-                <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-green-500 shadow-lg">
-                  <Image
-                    src={photoPreview}
-                    alt="Your photo"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-            )}
-
             {/* Personal Information Section */}
             <div>
               <h4 className="text-base md:text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -415,6 +399,16 @@ export default function RegistrationPage() {
                   icon={<CreditCard className="w-5 h-5 text-sky-600" />}
                   label="Aadhaar Number" 
                   value={formData.aadhaarOrId}
+                />
+                <DetailCard 
+                  icon={<User className="w-5 h-5 text-sky-600" />}
+                  label="Gender" 
+                  value={formData.gender.toUpperCase()}
+                />
+                <DetailCard 
+                  icon={<Award className="w-5 h-5 text-sky-600" />}
+                  label="Caste" 
+                  value={formData.caste.toUpperCase()}
                 />
                 <DetailCard 
                   icon={<Award className="w-5 h-5 text-sky-600" />}
@@ -650,11 +644,47 @@ export default function RegistrationPage() {
                     className="h-10 md:h-11 border-gray-300 text-sm md:text-base"
                     required
                   />
-                  {formData.aadhaarOrId && formData.aadhaarOrId.length > 0 && formData.aadhaarOrId.length < 12 && (
-                    <p className="text-xs text-gray-500 mt-1 border border-gray-300 rounded px-2 py-1 inline-block">
-                      Please fill out this field
-                    </p>
-                  )}
+                </div>
+              </div>
+
+              {/* Gender and Caste */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="gender" className="text-sm font-semibold text-gray-800">
+                    Gender <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.gender}
+                    onValueChange={(value) => handleChange("gender", value)}
+                  >
+                    <SelectTrigger className="h-10 md:h-11 border-gray-300 text-sm md:text-base w-full">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="caste" className="text-sm font-semibold text-gray-800">
+                    Caste <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.caste}
+                    onValueChange={(value) => handleChange("caste", value)}
+                  >
+                    <SelectTrigger className="h-10 md:h-11 border-gray-300 text-sm md:text-base w-full">
+                      <SelectValue placeholder="Select caste" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="obc">OBC</SelectItem>
+                      <SelectItem value="sc">SC</SelectItem>
+                      <SelectItem value="st">ST</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

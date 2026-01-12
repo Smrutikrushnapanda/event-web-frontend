@@ -13,13 +13,13 @@ const api = axios.create({
 export interface CreateRegistrationData {
   name: string;
   village: string;
-  gp: string;
   district: string;
   block: string;
   mobile: string;
   aadhaarOrId: string;
+  gender: 'male' | 'female' | 'others';
+  caste: 'general' | 'obc' | 'sc' | 'st';
   category: string;
-  photo?: File;
 }
 
 export interface RegistrationResponse {
@@ -27,13 +27,13 @@ export interface RegistrationResponse {
   qrCode: string;
   name: string;
   village: string;
-  gp: string;
   district: string;
   block: string;
   mobile: string;
   aadhaarOrId: string;
+  gender: 'male' | 'female' | 'others';
+  caste: 'general' | 'obc' | 'sc' | 'st';
   category: string;
-  photoUrl?: string;
   createdAt: string;
 }
 
@@ -94,7 +94,7 @@ export interface ApproveVolunteerData {
   assignedRole: string;
 }
 
-// ✅ Guest Pass Types
+// Guest Pass Types
 export interface GuestPass {
   id: string;
   qrCode: string;
@@ -166,39 +166,8 @@ export interface AssignGuestPassData {
 // Registration APIs
 export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
-    const formData = new FormData();
-    
-    // ✅ FIXED: Removed all .trim() calls
-    formData.append('name', data.name.trim());
-    formData.append('village', data.village.trim());
-    formData.append('gp', data.gp || "");
-    formData.append('district', data.district);
-    formData.append('block', data.block);
-    formData.append('mobile', data.mobile);
-    formData.append('aadhaarOrId', data.aadhaarOrId);
-    formData.append('category', data.category);
-    
-    if (data.photo) {
-      formData.append('photo', data.photo);
-    }
-
-    console.log('=== SENDING TO API ===');
-    for (let pair of formData.entries()) {
-      console.log(pair[0] + ':', pair[1]);
-    }
-
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/registrations`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          timeout: 30000,
-        }
-      );
-      
+      const response = await api.post('/registrations', data);
       console.log('✅ Registration successful:', response.data);
       return response.data;
     } catch (error: any) {
@@ -207,7 +176,6 @@ export const registrationApi = {
       if (error.response) {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
         throw new Error(error.response.data?.message || 'Registration failed');
       } else if (error.request) {
         console.error('No response received:', error.request);
@@ -271,9 +239,8 @@ export const registrationApi = {
   },
 };
 
-// ✅ Guest Pass APIs
+// Guest Pass APIs
 export const guestPassApi = {
-  // Get all guest passes
   getAll: async (): Promise<GuestPass[]> => {
     try {
       const response = await api.get('/guest-passes');
@@ -284,7 +251,6 @@ export const guestPassApi = {
     }
   },
 
-  // Get statistics
   getStatistics: async (includeBlockWise: boolean = false): Promise<GuestStatisticsResponse> => {
     try {
       const url = includeBlockWise 
@@ -298,7 +264,6 @@ export const guestPassApi = {
     }
   },
 
-  // Generate guest passes
   generate: async (data: GenerateGuestPassesData): Promise<GenerateGuestPassesResponse> => {
     try {
       const response = await api.post('/guest-passes/generate', data);
@@ -309,7 +274,6 @@ export const guestPassApi = {
     }
   },
 
-  // Assign details to a guest pass
   assignDetails: async (qrCode: string, data: AssignGuestPassData): Promise<GuestPass> => {
     try {
       const response = await api.post(`/guest-passes/${qrCode}/assign`, data);
@@ -320,7 +284,6 @@ export const guestPassApi = {
     }
   },
 
-  // Get guest pass by QR code
   getByQrCode: async (qrCode: string): Promise<GuestPass> => {
     try {
       const response = await api.get(`/guest-passes/qr/${qrCode}`);
@@ -331,7 +294,6 @@ export const guestPassApi = {
     }
   },
 
-  // Fast check-in
   fastCheckIn: async (qrCode: string, data: { type: string; scannedBy?: string }) => {
     try {
       const response = await api.post(`/guest-passes/fast-checkin/${qrCode}`, data);
@@ -342,14 +304,12 @@ export const guestPassApi = {
     }
   },
 
-  // Export CSV
   exportCSV: async (): Promise<void> => {
     try {
       const response = await api.get('/guest-passes/export/csv', {
         responseType: 'blob',
       });
       
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -363,14 +323,12 @@ export const guestPassApi = {
     }
   },
 
-  // Export Excel
   exportExcel: async (): Promise<void> => {
     try {
       const response = await api.get('/guest-passes/export/excel', {
         responseType: 'blob',
       });
       
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -384,14 +342,12 @@ export const guestPassApi = {
     }
   },
 
-  // Export QR PDF
   exportQRPdf: async (): Promise<void> => {
     try {
       const response = await api.get('/guest-passes/export/qr-pdf', {
         responseType: 'blob',
       });
       
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
