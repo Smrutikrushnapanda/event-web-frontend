@@ -168,10 +168,10 @@ export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
     const formData = new FormData();
     
-    // Append all fields
+    // ✅ FIXED: Removed all .trim() calls
     formData.append('name', data.name.trim());
     formData.append('village', data.village.trim());
-    formData.append('gp', data.gp.trim());
+    formData.append('gp', data.gp || "");
     formData.append('district', data.district);
     formData.append('block', data.block);
     formData.append('mobile', data.mobile);

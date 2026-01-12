@@ -1,22 +1,28 @@
-"use client"
+"use client";
 
-import Footer from "@/components/Footer"
-import Header from "@/components/Header"
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 export default function AdminLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-      <div className="flex min-h-screen w-full overflow-x-hidden bg-background text-foreground">
-        <div className="flex flex-1 flex-col overflow-x-hidden">
-          <main className="flex-1 p-6 overflow-x-hidden bg-muted">
-            <Header />
-            {children}
-            <Footer/>
-          </main>
+    <div className="min-h-screen w-full flex flex-col bg-background overflow-x-hidden">
+
+      {/* Header */}
+      <Header />
+
+      {/* Content */}
+      <main className="flex-1 w-full bg-muted">
+        <div className="w-full px-6 py-4">
+          {children}
         </div>
-      </div>
-  )
+      </main>
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  );
 }

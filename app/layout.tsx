@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner"
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -12,21 +12,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
       <body className={inter.className} suppressHydrationWarning>
-        <div className="flex min-h-screen flex-col">
-          <div className="print:hidden">
-            
-          </div>
+        <div className="min-h-screen flex flex-col">
           <Toaster />
-          <main className="flex-1">{children}</main>
-          <div className="print:hidden">
-
-          </div>
+          <main className="flex-1 w-full">{children}</main>
         </div>
       </body>
     </html>
