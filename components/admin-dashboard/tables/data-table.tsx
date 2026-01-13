@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -27,16 +27,19 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  pageIndex: number
+  onPageIndexChange: (index: number) => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  pageIndex,
+  onPageIndexChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState({})
-  const [globalFilter, setGlobalFilter] = useState("")
 
   const table = useReactTable({
     data,
@@ -48,43 +51,37 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      globalFilter,
     },
     initialState: {
       pagination: {
+        pageIndex,
         pageSize: 10,
       },
+    },
+    onPaginationChange: (updater) => {
+      if (typeof updater === 'function') {
+        const newState = updater(table.getState().pagination)
+        onPageIndexChange(newState.pageIndex)
+      }
     },
   })
 
   return (
     <div className="space-y-4">
-      {/* Search Bar and Column Visibility */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by name, mobile, or village..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-background"
-          />
-        </div>
-        
+      {/* Column Visibility Toggle */}
+      <div className="flex items-center justify-end">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">
+            <Button variant="outline" size="sm">
               Columns
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="border shadow-lg">
+          <DropdownMenuContent align="end" className="w-[200px]">
             <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {table
@@ -100,7 +97,7 @@ export function DataTable<TData, TValue>({
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id}
+                    {column.id.replace(/([A-Z])/g, ' $1').toLowerCase()}
                   </DropdownMenuCheckboxItem>
                 )
               })}
@@ -108,58 +105,61 @@ export function DataTable<TData, TValue>({
         </DropdownMenu>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full">
-          <thead className="border-b bg-muted/50">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th 
-                    key={header.id} 
-                    className="px-6 py-3 text-left text-sm font-medium text-muted-foreground"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody className="divide-y">
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <tr 
-                  key={row.id} 
-                  className="transition-colors hover:bg-muted/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td 
-                      key={cell.id} 
-                      className="px-6 py-4 text-sm"
+      {/* Table Container with Scroll */}
+      <div className="relative overflow-hidden rounded-md border">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="border-b bg-muted/50 sticky top-0">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th 
+                      key={header.id} 
+                      className="px-4 py-3 text-left text-sm font-medium text-muted-foreground whitespace-nowrap"
+                      style={{ minWidth: '150px' }}
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
                   ))}
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td 
-                  colSpan={columns.length} 
-                  className="px-6 py-12 text-center text-sm text-muted-foreground"
-                >
-                  No results found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              ))}
+            </thead>
+            <tbody className="divide-y">
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <tr 
+                    key={row.id} 
+                    className="hover:bg-muted/50 transition-colors"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td 
+                        key={cell.id} 
+                        className="px-4 py-3 text-sm whitespace-nowrap"
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td 
+                    colSpan={columns.length} 
+                    className="px-4 py-12 text-center text-sm text-muted-foreground"
+                  >
+                    No results found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="text-sm text-muted-foreground">
           Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
           {Math.min(
@@ -169,40 +169,74 @@ export function DataTable<TData, TValue>({
           of {table.getFilteredRowModel().rows.length} entries
         </div>
         
-        <div className="flex items-center gap-2">
-          <button
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
-            className="p-2 rounded-md border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="h-8 w-8 p-0"
           >
             <ChevronsLeft className="h-4 w-4" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="p-2 rounded-md border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="h-8 w-8 p-0"
           >
             <ChevronLeft className="h-4 w-4" />
-          </button>
+          </Button>
           
-          <span className="text-sm font-medium px-2">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-          </span>
+          <div className="flex items-center gap-1 mx-2">
+            {Array.from({ length: Math.min(5, table.getPageCount()) }).map((_, i) => {
+              let pageNum = i
+              const currentPage = table.getState().pagination.pageIndex
+              const totalPages = table.getPageCount()
+              
+              if (totalPages <= 5) {
+                pageNum = i
+              } else if (currentPage <= 2) {
+                pageNum = i
+              } else if (currentPage >= totalPages - 3) {
+                pageNum = totalPages - 5 + i
+              } else {
+                pageNum = currentPage - 2 + i
+              }
+              
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => table.setPageIndex(pageNum)}
+                  className="h-8 w-8 p-0"
+                >
+                  {pageNum + 1}
+                </Button>
+              )
+            })}
+          </div>
           
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="p-2 rounded-md border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="h-8 w-8 p-0"
           >
             <ChevronRight className="h-4 w-4" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
-            className="p-2 rounded-md border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="h-8 w-8 p-0"
           >
             <ChevronsRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

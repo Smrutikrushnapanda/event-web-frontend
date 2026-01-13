@@ -76,9 +76,18 @@ export default function RegistrationPage() {
   const availableBlocks = formData.district ? (odishaBlocks[formData.district] || []) : [];
 
   const handleChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-    if (error) setError("");
-  };
+  let v = value;
+
+  // Keep original spacing clean (optional)
+  if (name === "name" || name === "village") {
+    v = v.replace(/\s+/g, " ").trimStart(); // avoid multiple spaces
+    v = v.toUpperCase(); // ✅ actual value becomes uppercase
+  }
+
+  setFormData({ ...formData, [name]: v });
+  if (error) setError("");
+};
+
 
   const handleDistrictChange = (district: string) => {
     setFormData({
@@ -171,7 +180,7 @@ export default function RegistrationPage() {
     }
 
     if (!formData.category) {
-      setError("Please select a category");
+      setError("Please select a FARMER TYPE");
       setLoading(false);
       return;
     }
@@ -309,12 +318,12 @@ export default function RegistrationPage() {
               />
               <DetailCard 
                 icon={<Award className="w-5 h-5 text-blue-600" />}
-                label="Caste" 
+                label="Category" 
                 value={foundRegistration.caste?.toUpperCase() || "Not provided"}
               />
               <DetailCard 
                 icon={<Award className="w-5 h-5 text-blue-600" />}
-                label="Category" 
+                label="Farmer Type" 
                 value={foundRegistration.category} 
               />
               <DetailCard 
@@ -407,12 +416,12 @@ export default function RegistrationPage() {
                 />
                 <DetailCard 
                   icon={<Award className="w-5 h-5 text-sky-600" />}
-                  label="Caste" 
+                  label="Category" 
                   value={formData.caste.toUpperCase()}
                 />
                 <DetailCard 
                   icon={<Award className="w-5 h-5 text-sky-600" />}
-                  label="Category" 
+                  label="Farmer Type" 
                   value={formData.category} 
                 />
               </div>
@@ -669,14 +678,14 @@ export default function RegistrationPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="caste" className="text-sm font-semibold text-gray-800">
-                    Caste <span className="text-red-500">*</span>
+                    Category <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={formData.caste}
                     onValueChange={(value) => handleChange("caste", value)}
                   >
                     <SelectTrigger className="h-10 md:h-11 border-gray-300 text-sm md:text-base w-full">
-                      <SelectValue placeholder="Select caste" />
+                      <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="general">General</SelectItem>
@@ -691,14 +700,14 @@ export default function RegistrationPage() {
               {/* Category */}
               <div className="space-y-1.5">
                 <Label htmlFor="category" className="text-sm font-semibold text-gray-800">
-                  Category <span className="text-red-500">*</span>
+                  Farmer Type <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.category}
                   onValueChange={(value) => handleChange("category", value)}
                 >
                   <SelectTrigger className="h-10 md:h-11 border-gray-300 text-sm md:text-base w-full">
-                    <SelectValue placeholder="Select Category" />
+                    <SelectValue placeholder="Select Type" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
                     {odishaCategory.map((dept) => (

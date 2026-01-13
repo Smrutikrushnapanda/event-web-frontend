@@ -1,7 +1,7 @@
 export const odishaDistricts = [
   "Angul",
   "Balangir",
-  "Balasore",
+  "Baleswar",
   "Bargarh",
   "Bhadrak",
   "Boudh",
@@ -11,7 +11,7 @@ export const odishaDistricts = [
   "Gajapati",
   "Ganjam",
   "Jagatsinghpur",
-  "Jajpur",
+  "Jajapur",
   "Jharsuguda",
   "Kalahandi",
   "Kandhamal",
@@ -27,21 +27,23 @@ export const odishaDistricts = [
   "Puri",
   "Rayagada",
   "Sambalpur",
-  "Subarnapur",
+  "Sonepur",
   "Sundargarh",
 ];
 
+
 export const odishaBlocks: Record<string, string[]> = {
   Angul: [
-    "Anugul",
+    "Angul",
     "Athmallik",
     "Banarpal",
     "Chhendipada",
     "Kaniha",
     "Kishorenagar",
     "Palalahada",
-    "Talacher",
+    "Talcher",
   ],
+
   Balangir: [
     "Agalpur",
     "Balangir",
@@ -58,7 +60,8 @@ export const odishaBlocks: Record<string, string[]> = {
     "Titlagarh",
     "Turekela",
   ],
-  Balasore: [
+
+  Baleshwar: [
     "Bahanaga",
     "Baleshwar",
     "Baliapal",
@@ -72,6 +75,7 @@ export const odishaBlocks: Record<string, string[]> = {
     "Simulia",
     "Soro",
   ],
+
   Bargarh: [
     "Ambabhona",
     "Attabira",
@@ -86,6 +90,7 @@ export const odishaBlocks: Record<string, string[]> = {
     "Paikmal",
     "Sohella",
   ],
+
   Bhadrak: [
     "Basudevpur",
     "Bhadrak",
@@ -95,34 +100,36 @@ export const odishaBlocks: Record<string, string[]> = {
     "Dhamanagar",
     "Tihidi",
   ],
+
   Boudh: [
     "Boudh",
     "Harabhanga",
-    "Kantamal",
+    "Kantamal"
   ],
-Cuttack: [
-  "Athagad",
-  "Badamba",
-  "Banki",
-  "Banki- Dampara",
-  "Baranga",
-  "Cuttacksadar",
-  "Kantapada",
-  "Mahanga",
-  "Narasinghpur",
-  "Niali",
-  "Nischinta Koili",
-  "Salepur",
-  "Tangi Choudwar",
-  "Tigiria",
-],
+
+  Cuttack: [
+    "Athagad",
+    "Badamba",
+    "Banki",
+    "Banki-Dampara",
+    "Baranga",
+    "Cuttacksadar",
+    "Kantapada",
+    "Mahanga",
+    "Narasinghpur",
+    "Niali",
+    "Nischinta Koili",
+    "Salepur",
+    "Tangi Choudwar",
+    "Tigiria",
+  ],
+
   Deogarh: [
-    "Bamra",
     "Barkote",
-    "Deogarh",
     "Reamal",
-    "Tileibani",
+    "Tileibani"
   ],
+
   Dhenkanal: [
     "Bhuban",
     "Dhenkanal Sadar",
@@ -133,39 +140,41 @@ Cuttack: [
     "Odapada",
     "Parjang",
   ],
-Gajapati: [
-  "Gosani",
-  "Gumma",
-  "Kasinagar",
-  "Mohana",
-  "Nuagada",
-  "R.Udayagiri",
-  "Rayagada",
-],
+
+  Gajapati: [
+    "Gosani",
+    "Gumma",
+    "Kasinagar",
+    "Mohana",
+    "Nuagada",
+    "R. Udayagiri",
+    "Rayagada",
+  ],
+
   Ganjam: [
     "Aska",
+    "Beguniapada",
     "Bellaguntha",
-    "Berhampur",
     "Bhanjanagar",
     "Buguda",
-    "Chhatrapur",
+    "Chatrapur",
     "Chikiti",
     "Digapahandi",
     "Ganjam",
     "Hinjilicut",
-    "Jarada",
+    "Jagannathprasad",
     "Kabisuryanagar",
     "Khallikote",
     "Kukudakhandi",
     "Patrapur",
-    "Polsara",
+    "Polosara",
     "Purusottampur",
     "Rangeilunda",
     "Sanakhemundi",
     "Seragarh",
-    "Sorada",
     "Surada",
   ],
+
   Jagatsinghpur: [
     "Balikuda",
     "Biridi",
@@ -176,39 +185,50 @@ Gajapati: [
     "Raghunathpur",
     "Tirtol",
   ],
-  Jajpur: [
+
+  Jajapur: [
+    "Badachana",
     "Bari",
     "Binjharpur",
+    "Danagadi",
     "Dasarathpur",
     "Dharmasala",
-    "Jajpur",
+    "Jajapur",
     "Korei",
     "Rasulpur",
     "Sukinda",
   ],
-  Jharsuguda: ["Jharsuguda", "Kirmira", "Kolabira", "Laikera", "Lakhanpur"],
+
+  Jharsuguda: [
+    "Jharsuguda",
+    "Kirmira",
+    "Kolabira",
+    "Laikera",
+    "Lakhanpur"
+  ],
+
   Kalahandi: [
     "Bhawanipatna",
     "Dharamgarh",
     "Golamunda",
-    "Jayapatna",
-    "Jaipatna",
+    "Jaypatna",
     "Junagarh",
+    "Kalampur",
     "Karlamunda",
-    "Kashipur",
     "Kesinga",
     "Kokasara",
     "Lanjigarh",
-    "M. Rampur",
+    "Madanpur Rampur",
     "Narla",
     "Thuamul Rampur",
   ],
+
   Kandhamal: [
-    "Balliguda",
     "Baliguda",
     "Chakapada",
     "Daringbadi",
     "G. Udayagiri",
+    "K.nuagan",
     "Khajuripada",
     "Kotagarh",
     "Nuagaon",
@@ -216,11 +236,13 @@ Gajapati: [
     "Phulbani",
     "Raikia",
     "Tikabali",
+    "Tumudibandh"
   ],
+
   Kendrapara: [
     "Aul",
     "Derabish",
-    "Garadpur",
+    "Garadapur",
     "Kendrapara",
     "Mahakalapada",
     "Marsaghai",
@@ -228,18 +250,23 @@ Gajapati: [
     "Rajkanika",
     "Rajnagar",
   ],
+
   Kendujhar: [
     "Anandapur",
     "Banspal",
     "Champua",
     "Ghatagaon",
+    "Ghasipura",
+    "Harichadanpur",
     "Hatadihi",
     "Jhumpura",
-    "Kendujhar",
-    "Patna",
+    "Joda",
+    "Kendujhar Sadar",
+    "Patana",
     "Saharpada",
     "Telkoi",
   ],
+
   Khordha: [
     "Balianta",
     "Balipatna",
@@ -248,41 +275,49 @@ Gajapati: [
     "Bhubaneswar",
     "Bolgarh",
     "Chilika",
-    "Jatani",
+    "Jatni",
     "Khordha",
     "Tangi",
   ],
+
   Koraput: [
     "Bandhugaon",
     "Boipariguda",
+    "Borigumma",
     "Dasmantpur",
     "Jeypore",
     "Koraput",
     "Kotpad",
-    "Kundra",
-    "Lamataput",
+    "Kundura",
+    "Lamtaput",
     "Laxmipur",
-    "Narayanpatna",
+    "Narayan patna",
     "Nandapur",
     "Pottangi",
     "Semiliguda",
   ],
+
   Malkangiri: [
     "Chitrakonda",
     "Kalimela",
     "Khairput",
     "Korukonda",
-    "Kudumulugumma",
     "Malkangiri",
     "Mathili",
+    "Podia"
   ],
+
   Mayurbhanj: [
     "Badasahi",
-    "Bangiriposi",
+    "Bahalda",
+    "Bangriposi",
     "Baripada",
+    "Betnoi",
+    "Bijalata",
     "Bisoi",
     "Gopabandhu Nagar",
     "Jamda",
+    "Joshipur",
     "Karanjia",
     "Kaptipada",
     "Khunta",
@@ -294,14 +329,16 @@ Gajapati: [
     "Rasgovindpur",
     "Samakhunta",
     "Saraskana",
+    "Sukruli",
     "Suliapada",
     "Thakurmunda",
     "Tiring",
     "Udala",
   ],
+
   Nabarangpur: [
     "Chandahandi",
-    "Dabugaon",
+    "Dabugam",
     "Jharigam",
     "Kosagumuda",
     "Nabarangpur",
@@ -311,18 +348,26 @@ Gajapati: [
     "Tentulikhunti",
     "Umerkote",
   ],
+
   Nayagarh: [
-    "Banpur",
     "Bhapur",
     "Dasapalla",
     "Gania",
-    "Khandapada",
+    "Khandapara",
     "Nuagaon",
     "Nayagarh",
     "Odagaon",
     "Ranpur",
   ],
-  Nuapada: ["Boden", "Khariar", "Komna", "Nuapada", "Sinapali"],
+
+  Nuapada: [
+    "Boden",
+    "Khariar",
+    "Komna",
+    "Nuapada",
+    "Sinapali"
+  ],
+
   Puri: [
     "Astaranga",
     "Brahmagiri",
@@ -331,13 +376,16 @@ Gajapati: [
     "Kakatpur",
     "Kanas",
     "Krushnaprasad",
-    "Nimapara",
-    "Puri",
+    "Nimapada",
+    "Pipili",
+    "Sadar",
     "Satyabadi",
   ],
+
   Rayagada: [
     "Bisam Cuttack",
     "Chandrapur",
+    "Gudari",
     "Gunupur",
     "Kalyansinghpur",
     "Kasipur",
@@ -347,31 +395,33 @@ Gajapati: [
     "Ramanaguda",
     "Rayagada",
   ],
+
   Sambalpur: [
     "Bamra",
     "Dhankauda",
-    "Jujumura",
+    "Jamankira",
+    "Jujomura",
     "Kuchinda",
     "Maneswar",
     "Naktideul",
     "Rairakhol",
     "Rengali",
-    "Sambalpur",
-    "Jamankira",
   ],
-  Subarnapur: [
+
+  Sonepur: [
     "Birmaharajpur",
-    "Binka",
+    "Binika",
     "Dunguripali",
-    "Subarnapur",
+    "Sonepur",
     "Tarabha",
-    "Ulunda",
+    "Ullunda",
   ],
+
   Sundargarh: [
     "Balisankara",
     "Bargaon",
     "Bisra",
-    "Bonai",
+    "Bonaigarh",
     "Gurundia",
     "Hemgir",
     "Koida",

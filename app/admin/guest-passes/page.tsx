@@ -24,14 +24,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { guestPassApi, GuestStatisticsResponse, GuestPass } from "@/lib/api";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -48,6 +40,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { GuestPassesDataTable } from "../../../components/manage-pass/table/data-table";
+import { createGuestPassColumns } from "../../../components/manage-pass/table/columns";
 
 export default function GuestPassesPage() {
   const [loading, setLoading] = useState(false);
@@ -185,6 +179,9 @@ export default function GuestPassesPage() {
       setLoading(false);
     }
   };
+
+  // Create columns for the data table
+  const columns = createGuestPassColumns(openAssignDialog);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 py-8 px-4">
@@ -344,13 +341,27 @@ export default function GuestPassesPage() {
         {/* Passes List */}
         <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <UserPlus className="w-6 h-6" />
-              Manage Passes ({filteredPasses.length})
-            </CardTitle>
-            <CardDescription>
-              Search and assign details to guest passes
-            </CardDescription>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <UserPlus className="w-6 h-6" />
+                  Manage Passes ({filteredPasses.length})
+                </CardTitle>
+                <CardDescription>
+                  Search and assign details to guest passes
+                </CardDescription>
+              </div>
+              
+              <Button
+                onClick={fetchPasses}
+                variant="outline"
+                size="sm"
+                className="w-full md:w-auto"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh List
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filters */}
@@ -398,103 +409,12 @@ export default function GuestPassesPage() {
               </div>
             </div>
 
-            <Button
-              onClick={fetchPasses}
-              variant="outline"
-              size="sm"
-              className="w-full md:w-auto"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh List
-            </Button>
-
-            {/* Table */}
-            <div className="border rounded-lg overflow-auto max-h-[600px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>QR Code</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead>Check-ins</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPasses.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                        No passes found. Generate passes to get started.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredPasses.map((pass) => (
-                      <TableRow key={pass.id}>
-                        <TableCell className="font-mono text-sm">{pass.qrCode}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              pass.category === "DELEGATE"
-                                ? "default"
-                                : pass.category === "VVIP"
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {pass.category}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {pass.isAssigned ? (
-                            <Badge variant="default" className="bg-green-600">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Assigned
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Unassigned
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{pass.name || "-"}</TableCell>
-                        <TableCell>{pass.mobile || "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {pass.hasEntryCheckIn && (
-                              <Badge variant="outline" className="text-xs">E</Badge>
-                            )}
-                            {pass.hasLunchCheckIn && (
-                              <Badge variant="outline" className="text-xs">L</Badge>
-                            )}
-                            {pass.hasDinnerCheckIn && (
-                              <Badge variant="outline" className="text-xs">D</Badge>
-                            )}
-                            {pass.hasSessionCheckIn && (
-                              <Badge variant="outline" className="text-xs">S</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {!pass.isAssigned && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openAssignDialog(pass)}
-                            >
-                              <UserPlus className="w-4 h-4 mr-1" />
-                              Assign
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            {/* Data Table */}
+            <GuestPassesDataTable
+              columns={columns}
+              data={filteredPasses}
+              loading={loading}
+            />
           </CardContent>
         </Card>
 
