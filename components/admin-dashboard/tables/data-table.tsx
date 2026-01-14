@@ -55,6 +55,10 @@ export function DataTable<TData, TValue>({
       sorting,
       columnFilters,
       columnVisibility,
+      pagination: {  // Add pagination to state
+        pageIndex,   // Use the external pageIndex prop
+        pageSize: 10,
+      },
     },
     initialState: {
       pagination: {

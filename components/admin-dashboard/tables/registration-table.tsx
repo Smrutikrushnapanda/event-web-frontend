@@ -1,10 +1,9 @@
-// registrations-table.tsx
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { DataTable } from "./data-table"
 import { createColumns, Registration } from "./columns"
-import { registrationApi } from "../../../lib/api"
+import { registrationApi, UpdateRegistrationData } from "../../../lib/api"
 import { 
   Loader2, 
   AlertCircle, 
@@ -17,7 +16,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -26,10 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { odishaDistricts, odishaBlocks } from "../../../lib/odisha-data"
 
-// Define filter types
 interface Filters {
   search: string;
   district: string;
@@ -43,8 +42,14 @@ export function RegistrationsTable() {
   const [error, setError] = useState<string | null>(null)
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<'view' | 'edit'>('view')
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize] = useState(10)
+  
+  // Edit form state
+  const [editLoading, setEditLoading] = useState(false)
+  const [formData, setFormData] = useState<UpdateRegistrationData>({})
+  const [editDistrict, setEditDistrict] = useState<string>("")
   
   // Filters state
   const [filters, setFilters] = useState<Filters>({
@@ -53,10 +58,9 @@ export function RegistrationsTable() {
     block: 'all'
   })
 
-  // Get blocks based on selected district
+  // Get blocks based on selected district (for filters)
   const availableBlocks = useMemo(() => {
     if (filters.district === 'all') {
-      // Return all unique blocks from data if no district selected
       const allBlocks = registrations
         .map(r => r.block)
         .filter(Boolean)
@@ -64,15 +68,22 @@ export function RegistrationsTable() {
         .sort()
       return allBlocks
     }
-    
-    // Return blocks for selected district from odisha-data
     return odishaBlocks[filters.district] || []
   }, [filters.district, registrations])
 
-  // Fetch registrations from API
+  // Get blocks for edit form
+  const editAvailableBlocks = editDistrict ? odishaBlocks[editDistrict] || [] : []
+
   useEffect(() => {
     fetchRegistrations()
   }, [])
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      applyFilters()
+    }, 500)
+    return () => clearTimeout(timeoutId)
+  }, [filters, registrations])
 
   const fetchRegistrations = async () => {
     try {
@@ -89,19 +100,9 @@ export function RegistrationsTable() {
     }
   }
 
-  // Apply filters with debouncing for search
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      applyFilters()
-    }, 500) // 500ms debounce for search
-
-    return () => clearTimeout(timeoutId)
-  }, [filters, registrations])
-
   const applyFilters = () => {
     let filtered = [...registrations]
 
-    // Apply search filter
     if (filters.search.trim()) {
       const searchTerm = filters.search.toLowerCase()
       filtered = filtered.filter(reg =>
@@ -113,33 +114,52 @@ export function RegistrationsTable() {
       )
     }
 
-    // Apply district filter
     if (filters.district !== 'all') {
       filtered = filtered.filter(reg => reg.district === filters.district)
     }
 
-    // Apply block filter
     if (filters.block !== 'all') {
       filtered = filtered.filter(reg => reg.block === filters.block)
     }
 
     setFilteredRegistrations(filtered)
-    setPageIndex(0) // Reset to first page when filters change
+    setPageIndex(0)
   }
 
   const handleViewDetails = (registration: Registration) => {
     setSelectedRegistration(registration)
+    setModalMode('view')
+    setIsModalOpen(true)
+  }
+
+  const handleEditRegistration = (registration: Registration) => {
+    setSelectedRegistration(registration)
+    setModalMode('edit')
+    setFormData({
+      name: registration.name,
+      village: registration.village,
+      district: registration.district,
+      block: registration.block,
+      mobile: registration.mobile,
+      aadhaarOrId: registration.aadhaarOrId,
+      gender: registration.gender,
+      caste: registration.caste,
+      category: registration.category,
+    })
+    setEditDistrict(registration.district)
     setIsModalOpen(true)
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedRegistration(null)
+    setModalMode('view')
+    setFormData({})
+    setEditDistrict("")
   }
 
   const handleFilterChange = (key: keyof Filters, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }))
-    // Clear block filter when district changes
     if (key === 'district') {
       setFilters(prev => ({ ...prev, block: 'all' }))
     }
@@ -153,7 +173,39 @@ export function RegistrationsTable() {
     })
   }
 
-  // Count active filters (excluding 'all' values)
+  const handleInputChange = (field: keyof UpdateRegistrationData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleDistrictChange = (district: string) => {
+    setEditDistrict(district)
+    setFormData(prev => ({ 
+      ...prev, 
+      district,
+      block: ''
+    }))
+  }
+
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!selectedRegistration) return
+
+    try {
+      setEditLoading(true)
+      await registrationApi.update(selectedRegistration.id, formData)
+      
+      alert('✅ Registration updated successfully!')
+      await fetchRegistrations()
+      handleCloseModal()
+    } catch (error: any) {
+      console.error('Update failed:', error)
+      alert(`❌ Update failed: ${error.message}`)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (filters.search.trim()) count++
@@ -162,8 +214,12 @@ export function RegistrationsTable() {
     return count
   }, [filters])
 
-  // Create columns with view handler and pagination info
-  const columns = createColumns(handleViewDetails, pageIndex, pageSize)
+  const columns = createColumns(
+    handleViewDetails,
+    handleEditRegistration,
+    pageIndex,
+    pageSize
+  )
 
   if (loading) {
     return (
@@ -259,7 +315,6 @@ export function RegistrationsTable() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
@@ -273,7 +328,6 @@ export function RegistrationsTable() {
               </div>
             </div>
 
-            {/* District Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -282,7 +336,6 @@ export function RegistrationsTable() {
               <Select
                 value={filters.district}
                 onValueChange={(value) => handleFilterChange('district', value)}
-
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select district" />
@@ -298,7 +351,6 @@ export function RegistrationsTable() {
               </Select>
             </div>
 
-            {/* Block Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <Building className="h-4 w-4" />
@@ -310,14 +362,14 @@ export function RegistrationsTable() {
                 disabled={filters.district === 'all' && availableBlocks.length === 0}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue  placeholder={
+                  <SelectValue placeholder={
                     filters.district === 'all' 
                       ? "Select district first" 
                       : "Select block"
                   } />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="w-full">
+                  <SelectItem value="all">
                     {filters.district === 'all' ? 'All blocks' : `All blocks in ${filters.district}`}
                   </SelectItem>
                   {availableBlocks.map((block) => (
@@ -330,7 +382,6 @@ export function RegistrationsTable() {
             </div>
           </div>
 
-          {/* Active Filters Display */}
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap gap-2 pt-4 border-t">
               <span className="text-sm text-muted-foreground mr-2">Active filters:</span>
@@ -379,12 +430,16 @@ export function RegistrationsTable() {
         />
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      {/* Single Dialog for View & Edit */}
+      <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Registration Details</DialogTitle>
+            <DialogTitle>
+              {modalMode === 'view' ? 'Registration Details' : 'Edit Registration'}
+            </DialogTitle>
           </DialogHeader>
-          {selectedRegistration && (
+
+          {modalMode === 'view' && selectedRegistration && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -411,6 +466,14 @@ export function RegistrationsTable() {
                   <p className="text-sm font-medium text-muted-foreground">Mobile</p>
                   <p className="font-semibold">{selectedRegistration.mobile ?? "-"}</p>
                 </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Gender</p>
+                  <p className="font-semibold capitalize">{selectedRegistration.gender ?? "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Caste</p>
+                  <p className="font-semibold uppercase">{selectedRegistration.caste ?? "-"}</p>
+                </div>
                 <div className="col-span-2">
                   <p className="text-sm font-medium text-muted-foreground">Aadhaar / ID</p>
                   <p className="font-semibold">{selectedRegistration.aadhaarOrId ?? "-"}</p>
@@ -431,6 +494,170 @@ export function RegistrationsTable() {
                 </div>
               </div>
             </div>
+          )}
+
+          {modalMode === 'edit' && selectedRegistration && (
+            <form onSubmit={handleSubmitEdit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name || ''}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                  disabled={editLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mobile">Mobile Number *</Label>
+                <Input
+                  id="mobile"
+                  type="tel"
+                  maxLength={10}
+                  value={formData.mobile || ''}
+                  onChange={(e) => handleInputChange('mobile', e.target.value)}
+                  required
+                  disabled={editLoading}
+                  placeholder="10-digit mobile number"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="aadhaar">Aadhaar Number *</Label>
+                <Input
+                  id="aadhaar"
+                  type="text"
+                  maxLength={12}
+                  value={formData.aadhaarOrId || ''}
+                  onChange={(e) => handleInputChange('aadhaarOrId', e.target.value)}
+                  required
+                  disabled={editLoading}
+                  placeholder="12-digit Aadhaar"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="village">Village *</Label>
+                <Input
+                  id="village"
+                  value={formData.village || ''}
+                  onChange={(e) => handleInputChange('village', e.target.value)}
+                  required
+                  disabled={editLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="district">District *</Label>
+                <Select
+                  value={formData.district || ''}
+                  onValueChange={handleDistrictChange}
+                  disabled={editLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select district" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {odishaDistricts.map((district) => (
+                      <SelectItem key={district} value={district}>
+                        {district}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="block">Block *</Label>
+                <Select
+                  value={formData.block || ''}
+                  onValueChange={(value) => handleInputChange('block', value)}
+                  disabled={editLoading || !editDistrict}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={editDistrict ? "Select block" : "Select district first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {editAvailableBlocks.map((block) => (
+                      <SelectItem key={block} value={block}>
+                        {block}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender *</Label>
+                <Select
+                  value={formData.gender || ''}
+                  onValueChange={(value) => handleInputChange('gender', value as any)}
+                  disabled={editLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="others">Others</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="caste">Caste Category *</Label>
+                <Select
+                  value={formData.caste || ''}
+                  onValueChange={(value) => handleInputChange('caste', value as any)}
+                  disabled={editLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select caste" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="obc">OBC</SelectItem>
+                    <SelectItem value="sc">SC</SelectItem>
+                    <SelectItem value="st">ST</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Input
+                  id="category"
+                  value={formData.category || ''}
+                  onChange={(e) => handleInputChange('category', e.target.value)}
+                  required
+                  disabled={editLoading}
+                  placeholder="e.g., Fisheries & Animal Resources Development"
+                />
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCloseModal}
+                  disabled={editLoading}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={editLoading}>
+                  {editLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Registration'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>

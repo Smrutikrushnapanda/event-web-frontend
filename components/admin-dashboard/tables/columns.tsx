@@ -1,10 +1,17 @@
-// columns.tsx
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Check, X, User, QrCode, Eye } from "lucide-react"
+import { User, QrCode, Eye, MoreHorizontal, Edit } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export interface CheckIn {
   id: string;
@@ -20,23 +27,24 @@ export interface Registration {
   qrCode: string;
   name: string;
   village: string;
-  gp: string;
   district: string;
   block: string;
   mobile: string;
   aadhaarOrId: string;
-  photoUrl: string | null;
+  gender: 'male' | 'female' | 'others';
+  caste: 'general' | 'obc' | 'sc' | 'st';
   category: string;
-  delegateName: string | null;
-  delegateMobile: string | null;
-  delegatePhotoUrl: string | null;
-  isDelegateAttending: boolean;
+  behalfName: string | null;
+  behalfMobile: string | null;
+  behalfGender: 'male' | 'female' | 'others' | null;
+  isBehalfAttending: boolean;
   checkIns: CheckIn[];
   createdAt: string;
 }
 
 export const createColumns = (
   onViewDetails: (registration: Registration) => void,
+  onEditRegistration: (registration: Registration) => void,
   pageIndex: number,
   pageSize: number
 ): ColumnDef<Registration>[] => [
@@ -52,15 +60,15 @@ export const createColumns = (
     accessorKey: "name",
     header: "Name",
     cell: ({ row }) => {
-      const isDelegateAttending = row.original.isDelegateAttending
+      const isBehalfAttending = row.original.isBehalfAttending
       return (
         <div className="flex items-center gap-2">
           <div className="flex flex-col">
             <span className="font-medium">{row.getValue("name")}</span>
-            {isDelegateAttending && row.original.delegateName && (
+            {isBehalfAttending && row.original.behalfName && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <User className="h-3 w-3" />
-                <span>Delegate: {row.original.delegateName}</span>
+                <span>Behalf: {row.original.behalfName}</span>
               </div>
             )}
           </div>
@@ -85,12 +93,6 @@ export const createColumns = (
   {
     accessorKey: "village",
     header: "Village",
-    cell: ({ row }) => (
-      <div>
-        <div>{row.getValue("village")}</div>
-        <div className="text-xs text-muted-foreground">{row.original.gp}</div>
-      </div>
-    ),
   },
   {
     accessorKey: "block",
@@ -111,38 +113,6 @@ export const createColumns = (
       </Badge>
     ),
   },
-  // {
-  //   id: "attendance",
-  //   header: "Attendance",
-  //   cell: ({ row }) => {
-  //     const checkIns = row.original.checkIns
-  //     const hasEntry = checkIns.some(c => c.type === "entry")
-  //     const hasLunch = checkIns.some(c => c.type === "lunch")
-  //     const hasDinner = checkIns.some(c => c.type === "dinner")
-  //     const hasSession = checkIns.some(c => c.type === "session")
-      
-  //     return (
-  //       <div className="flex gap-2 flex-wrap">
-  //         <Badge variant={hasEntry ? "default" : "secondary"} className="gap-1">
-  //           {hasEntry ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-  //           Entry
-  //         </Badge>
-  //         <Badge variant={hasLunch ? "default" : "secondary"} className="gap-1">
-  //           {hasLunch ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-  //           Lunch
-  //         </Badge>
-  //         <Badge variant={hasDinner ? "default" : "secondary"} className="gap-1">
-  //           {hasDinner ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-  //           Dinner
-  //         </Badge>
-  //         <Badge variant={hasSession ? "default" : "secondary"} className="gap-1">
-  //           {hasSession ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-  //           Session
-  //         </Badge>
-  //       </div>
-  //     )
-  //   },
-  // },
   {
     accessorKey: "createdAt",
     header: "Registered On",
@@ -163,15 +133,32 @@ export const createColumns = (
     header: "Actions",
     cell: ({ row }) => {
       return (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onViewDetails(row.original)}
-          className="gap-2"
-        >
-          <Eye className="h-4 w-4" />
-          View
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onViewDetails(row.original)}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onEditRegistration(row.original)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Edit Registration
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )
     },
   },

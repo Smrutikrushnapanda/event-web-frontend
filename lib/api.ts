@@ -163,6 +163,18 @@ export interface AssignGuestPassData {
   assignedBy: string;
 }
 
+export interface UpdateRegistrationData {
+  name?: string;
+  village?: string;
+  district?: string;
+  block?: string;
+  mobile?: string;
+  aadhaarOrId?: string;
+  gender?: 'male' | 'female' | 'others';
+  caste?: 'general' | 'obc' | 'sc' | 'st';
+  category?: string;
+}
+
 // Registration APIs
 export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
@@ -235,6 +247,23 @@ export const registrationApi = {
     } catch (error: any) {
       console.error('Failed to fetch export stats:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch export stats');
+    }
+  },
+update: async (id: string, data: UpdateRegistrationData): Promise<RegistrationResponse> => {
+    try {
+      const response = await api.patch(`/registrations/${id}`, data);
+      console.log('✅ Registration updated:', response.data);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('❌ Update API Error:', error);
+      
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Update failed');
+      } else if (error.request) {
+        throw new Error('Server not responding');
+      } else {
+        throw new Error('Failed to update registration');
+      }
     }
   },
 };
