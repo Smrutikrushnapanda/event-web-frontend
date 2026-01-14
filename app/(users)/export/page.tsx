@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -17,6 +18,7 @@ import {
   BarChart3,
   QrCode,
   Users,
+  Hash,
 } from "lucide-react";
 import {
   Select,
@@ -41,6 +43,10 @@ export default function ExportPage() {
   const [selectedBlock, setSelectedBlock] = useState("");
   const [stats, setStats] = useState<ExportStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  
+  // ✅ Range inputs
+  const [rangeStart, setRangeStart] = useState<string>("1");
+  const [rangeEnd, setRangeEnd] = useState<string>("500");
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -63,6 +69,49 @@ export default function ExportPage() {
       console.error('Failed to fetch stats:', error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  // ✅ Handle Range Export
+  const handleExportRange = async () => {
+    const start = parseInt(rangeStart);
+    const end = parseInt(rangeEnd);
+
+    if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
+      alert("Invalid range. Please enter valid numbers where end >= start.");
+      return;
+    }
+
+    if (stats && end > stats.totalRegistrations) {
+      alert(`End number (${end}) exceeds total registrations (${stats.totalRegistrations})`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/registrations/export/qr-pdf/range/${start}/${end}`
+      );
+      if (!response.ok) throw new Error(`Export failed: ${response.status}`);
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `QR_Codes_${start}-${end}_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      alert(`✅ QR codes ${start}-${end} downloaded successfully!`);
+    } catch (error: any) {
+      alert(`Failed to export range: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -300,12 +349,158 @@ export default function ExportPage() {
             Farmer Registrations Export
           </h2>
 
+          {/* ✅ NEW: Export QR Code PDF by Range */}
+          <Card className="shadow-xl border-l-4 border-green-500">
+            <CardHeader>
+              <CardTitle className="text-2xl text-gray-900 flex items-center gap-2">
+                <Hash className="w-6 h-6 text-green-600" />
+                Export QR Code PDF by Range (Recommended)
+              </CardTitle>
+              <CardDescription>
+                Print specific ranges for easier management (e.g., 1-500, 501-1000)
+                {stats && ` out of ${stats.totalRegistrations} total`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Start Number
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={rangeStart}
+                    onChange={(e) => setRangeStart(e.target.value)}
+                    placeholder="1"
+                    className="h-12 text-base"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    End Number
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={rangeEnd}
+                    onChange={(e) => setRangeEnd(e.target.value)}
+                    placeholder="500"
+                    className="h-12 text-base"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setRangeStart("1");
+                    setRangeEnd("500");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  1-500
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRangeStart("501");
+                    setRangeEnd("1000");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  501-1000
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRangeStart("1001");
+                    setRangeEnd("1500");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  1001-1500
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRangeStart("1501");
+                    setRangeEnd("2000");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  1501-2000
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRangeStart("2001");
+                    setRangeEnd("2500");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  2001-2500
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRangeStart("2501");
+                    setRangeEnd("3000");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  2501-3000
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRangeStart("3001");
+                    setRangeEnd("3500");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  3001-3500
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRangeStart("3501");
+                    setRangeEnd("4000");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  3501-4000
+                </Button>
+              </div>
+
+              <Button
+                onClick={handleExportRange}
+                disabled={loading}
+                size="lg"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-lg h-14"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+                    Generating Range PDF...
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="w-6 h-6 mr-3" />
+                    Export QR Codes #{rangeStart} to #{rangeEnd}
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Export QR Code PDF (All) */}
           <Card className="shadow-xl border-l-4 border-orange-500">
             <CardHeader>
               <CardTitle className="text-2xl text-gray-900 flex items-center gap-2">
                 <QrCode className="w-6 h-6 text-orange-600" />
-                Export QR Code Labels (PDF)
+                Export All QR Code Labels (PDF)
               </CardTitle>
               <CardDescription>
                 Download QR codes (10mm × 10mm) with names and blocks for printing
@@ -598,23 +793,29 @@ export default function ExportPage() {
               <li className="flex items-start gap-2">
                 <span className="font-bold">1.</span>
                 <span>
-                  Use <strong>QR Code PDF</strong> to print labels for event distribution (10mm × 10mm stickers)
+                  Use <strong>Range Export</strong> (NEW!) to print batches with serial numbers (e.g., #1-#500, #501-#1000)
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">2.</span>
                 <span>
-                  For large datasets (10K+), use <strong>Block-wise export</strong> for best performance
+                  Use <strong>QR Code PDF</strong> to print labels for event distribution (10mm × 10mm stickers)
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">3.</span>
                 <span>
-                  Use <strong>CSV export</strong> for quick downloads without QR images
+                  For large datasets (10K+), use <strong>Block-wise export</strong> for best performance
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">4.</span>
+                <span>
+                  Use <strong>CSV export</strong> for quick downloads without QR images
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold">5.</span>
                 <span>
                   <strong>Guest Passes</strong> can be exported separately with category filters (DELEGATE/VVIP/VISITOR)
                 </span>

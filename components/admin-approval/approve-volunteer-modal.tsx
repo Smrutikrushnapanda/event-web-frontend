@@ -1,7 +1,7 @@
 // approve-volunteer-modal.tsx
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,24 +9,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { CheckCircle, Loader2 } from "lucide-react"
-import { Volunteer } from "./volunteers-api"
+} from "@/components/ui/select";
+import { CheckCircle, Loader2 } from "lucide-react";
+import { Volunteer } from "./volunteers-api";
 
 interface ApproveVolunteerModalProps {
-  volunteer: Volunteer | null
-  isOpen: boolean
-  onClose: () => void
-  onApprove: (volunteerId: string, assignedRole: string) => Promise<void>
+  volunteer: Volunteer | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onApprove: (volunteerId: string, assignedRole: string) => Promise<void>;
 }
 
 const VOLUNTEER_ROLES = [
@@ -40,7 +40,7 @@ const VOLUNTEER_ROLES = [
   "Transport Coordinator",
   "Medical Support",
   "Admin",
-]
+];
 
 export function ApproveVolunteerModal({
   volunteer,
@@ -48,32 +48,32 @@ export function ApproveVolunteerModal({
   onClose,
   onApprove,
 }: ApproveVolunteerModalProps) {
-  const [assignedRole, setAssignedRole] = useState<string>("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [assignedRole, setAssignedRole] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleApprove = async () => {
-    if (!volunteer || !assignedRole) return
+    if (!volunteer || !assignedRole) return;
 
     try {
-      setIsSubmitting(true)
-      await onApprove(volunteer.id, assignedRole)
-      setAssignedRole("")
-      onClose()
+      setIsSubmitting(true);
+      await onApprove(volunteer.id, assignedRole);
+      setAssignedRole("");
+      onClose();
     } catch (error) {
-      console.error("Failed to approve volunteer:", error)
+      console.error("Failed to approve volunteer:", error);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setAssignedRole("")
-      onClose()
+      setAssignedRole("");
+      onClose();
     }
-  }
+  };
 
-  if (!volunteer) return null
+  if (!volunteer) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -91,19 +91,12 @@ export function ApproveVolunteerModal({
         <div className="space-y-4 py-4">
           {/* Volunteer Info */}
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            {volunteer.photoUrl ? (
-              <img
-                src={volunteer.photoUrl}
-                alt={volunteer.name}
-                className="w-12 h-12 rounded-full object-cover border-2"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <span className="text-lg font-bold">
-                  {volunteer.name.charAt(0)}
-                </span>
-              </div>
-            )}
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <span className="text-lg font-bold">
+                {volunteer.name?.charAt(0)?.toUpperCase() || "?"}
+              </span>
+            </div>
+
             <div>
               <p className="font-medium">{volunteer.name}</p>
               <p className="text-sm text-muted-foreground">{volunteer.email}</p>
@@ -114,7 +107,7 @@ export function ApproveVolunteerModal({
           <div className="space-y-2">
             <Label htmlFor="role">Assigned Role *</Label>
             <Select value={assignedRole} onValueChange={setAssignedRole}>
-              <SelectTrigger id="role">
+              <SelectTrigger id="role" className="w-full">
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
@@ -138,7 +131,9 @@ export function ApproveVolunteerModal({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Experience:</span>
-              <span className="font-medium capitalize">{volunteer.experience}</span>
+              <span className="font-medium capitalize">
+                {volunteer.experience}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Location:</span>
@@ -179,5 +174,5 @@ export function ApproveVolunteerModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
