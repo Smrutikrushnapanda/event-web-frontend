@@ -19,6 +19,8 @@ import {
   QrCode,
   Users,
   Hash,
+  Filter,
+  X,
 } from "lucide-react";
 import {
   Select,
@@ -48,15 +50,31 @@ export default function ExportPage() {
   const [rangeStart, setRangeStart] = useState<string>("1");
   const [rangeEnd, setRangeEnd] = useState<string>("500");
 
+  // ✅ District and Block filters for range export
+  const [rangeDistrict, setRangeDistrict] = useState<string>("");
+  const [rangeBlock, setRangeBlock] = useState<string>("");
+  const [filteredCount, setFilteredCount] = useState<number | null>(null);
+  const [loadingCount, setLoadingCount] = useState(false);
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   const allBlocks = Object.keys(odishaBlocks).flatMap((district) =>
     odishaBlocks[district].map((block) => ({ district, block }))
   );
 
+  const districts = Object.keys(odishaBlocks);
+
+  // Get blocks for selected district
+  const availableBlocks = rangeDistrict ? odishaBlocks[rangeDistrict] || [] : [];
+
   useEffect(() => {
     fetchStats();
   }, []);
+
+  // ✅ Fetch filtered count when district/block changes
+  useEffect(() => {
+    fetchFilteredCount();
+  }, [rangeDistrict, rangeBlock]);
 
   const fetchStats = async () => {
     try {
@@ -72,7 +90,28 @@ export default function ExportPage() {
     }
   };
 
-  // ✅ Handle Range Export
+  // ✅ Fetch filtered count
+  const fetchFilteredCount = async () => {
+    setLoadingCount(true);
+    try {
+      const params = new URLSearchParams();
+      if (rangeDistrict) params.append('district', rangeDistrict);
+      if (rangeBlock) params.append('block', rangeBlock);
+
+      const response = await fetch(`${API_URL}/registrations/export/count?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setFilteredCount(data.count);
+      }
+    } catch (error) {
+      console.error('Failed to fetch filtered count:', error);
+      setFilteredCount(null);
+    } finally {
+      setLoadingCount(false);
+    }
+  };
+
+  // ✅ Handle Range Export with filters
   const handleExportRange = async () => {
     const start = parseInt(rangeStart);
     const end = parseInt(rangeEnd);
@@ -82,15 +121,20 @@ export default function ExportPage() {
       return;
     }
 
-    if (stats && end > stats.totalRegistrations) {
-      alert(`End number (${end}) exceeds total registrations (${stats.totalRegistrations})`);
+    const maxCount = filteredCount || stats?.totalRegistrations || 0;
+    if (end > maxCount) {
+      alert(`End number (${end}) exceeds available registrations (${maxCount})`);
       return;
     }
 
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (rangeDistrict) params.append('district', rangeDistrict);
+      if (rangeBlock) params.append('block', rangeBlock);
+
       const response = await fetch(
-        `${API_URL}/registrations/export/qr-pdf/range/${start}/${end}`
+        `${API_URL}/registrations/export/qr-pdf/range/${start}/${end}?${params.toString()}`
       );
       if (!response.ok) throw new Error(`Export failed: ${response.status}`);
 
@@ -98,7 +142,9 @@ export default function ExportPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `QR_Codes_${start}-${end}_${new Date().toISOString().split("T")[0]}.pdf`;
+      
+      const filterName = rangeBlock ? `${rangeBlock}_` : rangeDistrict ? `${rangeDistrict}_` : '';
+      a.download = `${filterName}QR_Codes_${start}-${end}_${new Date().toISOString().split("T")[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       
@@ -107,7 +153,8 @@ export default function ExportPage() {
         document.body.removeChild(a);
       }, 100);
       
-      alert(`✅ QR codes ${start}-${end} downloaded successfully!`);
+      const filterText = rangeBlock ? ` from ${rangeBlock}` : rangeDistrict ? ` from ${rangeDistrict}` : '';
+      alert(`✅ QR codes ${start}-${end}${filterText} downloaded successfully!`);
     } catch (error: any) {
       alert(`Failed to export range: ${error.message}`);
     } finally {
@@ -286,7 +333,7 @@ export default function ExportPage() {
               Export Data
             </CardTitle>
             <CardDescription className="text-blue-100 text-lg">
-              Download registrations and guest passes with QR codes
+              Download registrations and guest passes with QR codes (Ordered by District & Block)
             </CardDescription>
           </CardHeader>
         </Card>
@@ -330,7 +377,7 @@ export default function ExportPage() {
                 <div>
                   <p className="font-semibold text-yellow-900">Large Dataset Detected</p>
                   <p className="text-sm text-yellow-800 mt-1">
-                    With {stats.totalRegistrations} registrations, we recommend using block-wise export 
+                    With {stats.totalRegistrations} registrations, we recommend using district/block filters 
                     for faster downloads and better performance.
                   </p>
                 </div>
@@ -349,7 +396,7 @@ export default function ExportPage() {
             Farmer Registrations Export
           </h2>
 
-          {/* ✅ NEW: Export QR Code PDF by Range */}
+          {/* ✅ Export QR Code PDF by Range with Filters */}
           <Card className="shadow-xl border-l-4 border-green-500">
             <CardHeader>
               <CardTitle className="text-2xl text-gray-900 flex items-center gap-2">
@@ -357,11 +404,109 @@ export default function ExportPage() {
                 Export QR Code PDF by Range (Recommended)
               </CardTitle>
               <CardDescription>
-                Print specific ranges for easier management (e.g., 1-500, 501-1000)
-                {stats && ` out of ${stats.totalRegistrations} total`}
+                Print specific ranges with district/block filters (e.g., 1-500 from Khurda district)
+                {filteredCount !== null && ` - ${filteredCount} registrations available`}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* ✅ District and Block Filters */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Filter className="w-5 h-5 text-blue-600" />
+                  <span className="font-semibold text-blue-900">Optional Filters</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Filter by District (Optional)
+                    </label>
+                    <div className="relative">
+                      <Select 
+                        value={rangeDistrict} 
+                        onValueChange={(value) => {
+                          setRangeDistrict(value);
+                          setRangeBlock(""); // Reset block when district changes
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-12 text-base">
+                          <SelectValue placeholder="All Districts" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {districts.map((district) => (
+                            <SelectItem key={district} value={district}>
+                              {district}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {rangeDistrict && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                          onClick={() => {
+                            setRangeDistrict("");
+                            setRangeBlock("");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Filter by Block (Optional)
+                    </label>
+                    <div className="relative">
+                      <Select 
+                        value={rangeBlock} 
+                        onValueChange={setRangeBlock}
+                        disabled={!rangeDistrict}
+                      >
+                        <SelectTrigger className="w-full h-12 text-base">
+                          <SelectValue placeholder={rangeDistrict ? "All Blocks" : "Select District First"} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {availableBlocks.map((block) => (
+                            <SelectItem key={block} value={block}>
+                              {block}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {rangeBlock && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                          onClick={() => setRangeBlock("")}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {loadingCount && (
+                  <div className="text-center text-sm text-gray-600">
+                    <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
+                    Counting registrations...
+                  </div>
+                )}
+
+                {filteredCount !== null && (
+                  <div className="text-center text-sm font-semibold text-blue-700">
+                    📊 {filteredCount} registrations found
+                    {rangeBlock ? ` in ${rangeBlock}` : rangeDistrict ? ` in ${rangeDistrict}` : ' (all regions)'}
+                  </div>
+                )}
+              </div>
+
+              {/* Range Inputs */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">
@@ -391,7 +536,8 @@ export default function ExportPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              {/* Quick Range Buttons */}
+              <div className="grid grid-cols-4 gap-2">
                 <Button
                   onClick={() => {
                     setRangeStart("1");
@@ -410,7 +556,7 @@ export default function ExportPage() {
                   variant="outline"
                   size="sm"
                 >
-                  501-1000
+                  501-1K
                 </Button>
                 <Button
                   onClick={() => {
@@ -420,7 +566,7 @@ export default function ExportPage() {
                   variant="outline"
                   size="sm"
                 >
-                  1001-1500
+                  1K-1.5K
                 </Button>
                 <Button
                   onClick={() => {
@@ -430,50 +576,11 @@ export default function ExportPage() {
                   variant="outline"
                   size="sm"
                 >
-                  1501-2000
-                </Button>
-                <Button
-                  onClick={() => {
-                    setRangeStart("2001");
-                    setRangeEnd("2500");
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  2001-2500
-                </Button>
-                <Button
-                  onClick={() => {
-                    setRangeStart("2501");
-                    setRangeEnd("3000");
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  2501-3000
-                </Button>
-                <Button
-                  onClick={() => {
-                    setRangeStart("3001");
-                    setRangeEnd("3500");
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  3001-3500
-                </Button>
-                <Button
-                  onClick={() => {
-                    setRangeStart("3501");
-                    setRangeEnd("4000");
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  3501-4000
+                  1.5K-2K
                 </Button>
               </div>
 
+              {/* Export Button */}
               <Button
                 onClick={handleExportRange}
                 disabled={loading}
@@ -489,6 +596,8 @@ export default function ExportPage() {
                   <>
                     <QrCode className="w-6 h-6 mr-3" />
                     Export QR Codes #{rangeStart} to #{rangeEnd}
+                    {rangeBlock && ` (${rangeBlock})`}
+                    {!rangeBlock && rangeDistrict && ` (${rangeDistrict})`}
                   </>
                 )}
               </Button>
@@ -503,7 +612,7 @@ export default function ExportPage() {
                 Export All QR Code Labels (PDF)
               </CardTitle>
               <CardDescription>
-                Download QR codes (10mm × 10mm) with names and blocks for printing
+                Download all QR codes ordered by district and block for printing
                 {stats && ` (${stats.totalRegistrations} labels)`}
               </CardDescription>
             </CardHeader>
@@ -536,7 +645,7 @@ export default function ExportPage() {
                 Export All Registrations (Excel)
               </CardTitle>
               <CardDescription>
-                Download complete registration data with QR code images
+                Download complete registration data ordered by district and block
                 {stats && ` (${stats.estimatedExcelSizeMB}MB, ~${stats.estimatedExcelTimeMinutes} min)`}
               </CardDescription>
             </CardHeader>
@@ -569,7 +678,7 @@ export default function ExportPage() {
                 Export All Registrations (CSV)
               </CardTitle>
               <CardDescription>
-                Fast download without images - includes QR code text
+                Fast download ordered by district and block - includes QR code text
                 {stats && ` (${stats.estimatedCSVSizeKB}KB, instant)`}
               </CardDescription>
             </CardHeader>
@@ -599,10 +708,10 @@ export default function ExportPage() {
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="text-2xl text-gray-900">
-                Export by Block (Recommended)
+                Export by Block
               </CardTitle>
               <CardDescription>
-                Download registration data for a specific block - faster and more manageable
+                Download registration data for a specific block
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -793,31 +902,31 @@ export default function ExportPage() {
               <li className="flex items-start gap-2">
                 <span className="font-bold">1.</span>
                 <span>
-                  Use <strong>Range Export</strong> (NEW!) to print batches with serial numbers (e.g., #1-#500, #501-#1000)
+                  <strong>✨ NEW:</strong> Use <strong>Range Export with Filters</strong> to export specific batches from selected districts/blocks
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">2.</span>
                 <span>
-                  Use <strong>QR Code PDF</strong> to print labels for event distribution (10mm × 10mm stickers)
+                  All exports are now <strong>automatically ordered by District → Block → Name</strong> for easy organization
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">3.</span>
                 <span>
-                  For large datasets (10K+), use <strong>Block-wise export</strong> for best performance
+                  Use district filter to export QR codes for specific regions (e.g., only Khurda district)
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">4.</span>
                 <span>
-                  Use <strong>CSV export</strong> for quick downloads without QR images
+                  Use block filter for even more precision (e.g., only Bhubaneswar block)
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">5.</span>
                 <span>
-                  <strong>Guest Passes</strong> can be exported separately with category filters (DELEGATE/VVIP/VISITOR)
+                  Quick range buttons (1-500, 501-1K, etc.) help you export in manageable batches
                 </span>
               </li>
             </ul>
