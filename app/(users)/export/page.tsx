@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -21,6 +22,7 @@ import {
   Hash,
   Filter,
   X,
+  CheckCircle,
 } from "lucide-react";
 import {
   Select,
@@ -46,15 +48,20 @@ export default function ExportPage() {
   const [stats, setStats] = useState<ExportStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   
-  // ✅ Range inputs
-  const [rangeStart, setRangeStart] = useState<string>("1");
-  const [rangeEnd, setRangeEnd] = useState<string>("500");
+  // Range inputs
+  const [rangeStart, setRangeStart] = useState<string>("");
+  const [rangeEnd, setRangeEnd] = useState<string>("");
 
-  // ✅ District and Block filters for range export
+  // District and Block filters for range export
   const [rangeDistrict, setRangeDistrict] = useState<string>("");
   const [rangeBlock, setRangeBlock] = useState<string>("");
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
   const [loadingCount, setLoadingCount] = useState(false);
+
+  // ✅ NEW: Inclusion filter (changed from exclusion)
+  const [inclusionType, setInclusionType] = useState<"mobile" | "aadhaar" | "qr">("mobile");
+  const [inclusionInput, setInclusionInput] = useState<string>("");
+  const [includedCount, setIncludedCount] = useState<number>(0);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -63,18 +70,24 @@ export default function ExportPage() {
   );
 
   const districts = Object.keys(odishaBlocks);
-
-  // Get blocks for selected district
   const availableBlocks = rangeDistrict ? odishaBlocks[rangeDistrict] || [] : [];
 
   useEffect(() => {
     fetchStats();
   }, []);
 
-  // ✅ Fetch filtered count when district/block changes
   useEffect(() => {
     fetchFilteredCount();
   }, [rangeDistrict, rangeBlock]);
+
+  // ✅ Count included items
+  useEffect(() => {
+    const values = inclusionInput
+      .split(/[,\n]/)
+      .map(v => v.trim())
+      .filter(v => v.length > 0);
+    setIncludedCount(values.length);
+  }, [inclusionInput]);
 
   const fetchStats = async () => {
     try {
@@ -90,7 +103,6 @@ export default function ExportPage() {
     }
   };
 
-  // ✅ Fetch filtered count
   const fetchFilteredCount = async () => {
     setLoadingCount(true);
     try {
@@ -111,7 +123,7 @@ export default function ExportPage() {
     }
   };
 
-  // ✅ Handle Range Export with filters
+  // ✅ Handle Range Export with INCLUSION filters
   const handleExportRange = async () => {
     const start = parseInt(rangeStart);
     const end = parseInt(rangeEnd);
@@ -133,6 +145,12 @@ export default function ExportPage() {
       if (rangeDistrict) params.append('district', rangeDistrict);
       if (rangeBlock) params.append('block', rangeBlock);
 
+      // ✅ Add inclusion parameters
+      if (inclusionInput.trim()) {
+        params.append('inclusionType', inclusionType);
+        params.append('inclusionValues', inclusionInput.trim());
+      }
+
       const response = await fetch(
         `${API_URL}/registrations/export/qr-pdf/range/${start}/${end}?${params.toString()}`
       );
@@ -144,7 +162,8 @@ export default function ExportPage() {
       a.href = url;
       
       const filterName = rangeBlock ? `${rangeBlock}_` : rangeDistrict ? `${rangeDistrict}_` : '';
-      a.download = `${filterName}QR_Codes_${start}-${end}_${new Date().toISOString().split("T")[0]}.pdf`;
+      const inclusionSuffix = includedCount > 0 ? `_filtered_${includedCount}` : '';
+      a.download = `${filterName}QR_Codes_${start}-${end}${inclusionSuffix}_${new Date().toISOString().split("T")[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       
@@ -154,7 +173,8 @@ export default function ExportPage() {
       }, 100);
       
       const filterText = rangeBlock ? ` from ${rangeBlock}` : rangeDistrict ? ` from ${rangeDistrict}` : '';
-      alert(`✅ QR codes ${start}-${end}${filterText} downloaded successfully!`);
+      const inclusionText = includedCount > 0 ? ` (filtered to ${includedCount} specific ${inclusionType}s)` : '';
+      alert(`✅ QR codes ${start}-${end}${filterText}${inclusionText} downloaded successfully!`);
     } catch (error: any) {
       alert(`Failed to export range: ${error.message}`);
     } finally {
@@ -386,17 +406,14 @@ export default function ExportPage() {
           </Card>
         )}
 
-        {/* ========================================== */}
-        {/* SECTION 1: FARMER REGISTRATIONS EXPORT */}
-        {/* ========================================== */}
-
+        {/* FARMER REGISTRATIONS EXPORT */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <Users className="w-6 h-6" />
             Farmer Registrations Export
           </h2>
 
-          {/* ✅ Export QR Code PDF by Range with Filters */}
+          {/* ✅ Export QR Code PDF by Range with INCLUSION */}
           <Card className="shadow-xl border-l-4 border-green-500">
             <CardHeader>
               <CardTitle className="text-2xl text-gray-900 flex items-center gap-2">
@@ -404,12 +421,12 @@ export default function ExportPage() {
                 Export QR Code PDF by Range (Recommended)
               </CardTitle>
               <CardDescription>
-                Print specific ranges with district/block filters (e.g., 1-500 from Khurda district)
+                Print specific ranges with district/block filters and inclusion options
                 {filteredCount !== null && ` - ${filteredCount} registrations available`}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* ✅ District and Block Filters */}
+              {/* District and Block Filters */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Filter className="w-5 h-5 text-blue-600" />
@@ -426,7 +443,7 @@ export default function ExportPage() {
                         value={rangeDistrict} 
                         onValueChange={(value) => {
                           setRangeDistrict(value);
-                          setRangeBlock(""); // Reset block when district changes
+                          setRangeBlock("");
                         }}
                       >
                         <SelectTrigger className="w-full h-12 text-base">
@@ -503,6 +520,73 @@ export default function ExportPage() {
                     📊 {filteredCount} registrations found
                     {rangeBlock ? ` in ${rangeBlock}` : rangeDistrict ? ` in ${rangeDistrict}` : ' (all regions)'}
                   </div>
+                )}
+              </div>
+
+              {/* ✅ NEW: INCLUSION FILTER */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="font-semibold text-green-900">Include Specific Registrations (Optional)</span>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Inclusion Type
+                  </label>
+                  <Select 
+                    value={inclusionType} 
+                    onValueChange={(value: "mobile" | "aadhaar" | "qr") => setInclusionType(value)}
+                  >
+                    <SelectTrigger className="w-full h-12 text-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mobile">Mobile Number</SelectItem>
+                      <SelectItem value="aadhaar">Aadhaar Number</SelectItem>
+                      <SelectItem value="qr">QR Code</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Enter values to include (comma or newline separated)
+                  </label>
+                  <Textarea
+                    value={inclusionInput}
+                    onChange={(e) => setInclusionInput(e.target.value)}
+                    placeholder={
+                      inclusionType === "mobile" 
+                        ? "9937898**0, 8789876**9, 9938156**6\nor one per line"
+                        : inclusionType === "aadhaar"
+                        ? "989876765412, 980876567812\nor one per line"
+                        : "EVENT-ABC123XYZ0, EVENT-XYZ789ABC1\nor one per line"
+                    }
+                    className="h-24 text-base font-mono"
+                  />
+                  {includedCount > 0 && (
+                    <p className="text-sm font-semibold text-green-700">
+                      ✅ Will include only {includedCount} {inclusionType}(s)
+                    </p>
+                  )}
+                  {includedCount > 0 && (
+                    <p className="text-xs text-gray-600">
+                      Note: Only registrations matching these {inclusionType}s will be included in the export
+                    </p>
+                  )}
+                </div>
+
+                {inclusionInput && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setInclusionInput("")}
+                    className="w-full"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Clear Inclusions
+                  </Button>
                 )}
               </div>
 
@@ -596,8 +680,7 @@ export default function ExportPage() {
                   <>
                     <QrCode className="w-6 h-6 mr-3" />
                     Export QR Codes #{rangeStart} to #{rangeEnd}
-                    {rangeBlock && ` (${rangeBlock})`}
-                    {!rangeBlock && rangeDistrict && ` (${rangeDistrict})`}
+                    {includedCount > 0 && ` (only ${includedCount} selected)`}
                   </>
                 )}
               </Button>
@@ -902,25 +985,25 @@ export default function ExportPage() {
               <li className="flex items-start gap-2">
                 <span className="font-bold">1.</span>
                 <span>
-                  <strong>✨ NEW:</strong> Use <strong>Range Export with Filters</strong> to export specific batches from selected districts/blocks
+                  <strong>✨ NEW:</strong> Use <strong>Range Export with Inclusion Filter</strong> to export specific registrations by mobile/aadhaar/QR code
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">2.</span>
                 <span>
-                  All exports are now <strong>automatically ordered by District → Block → Name</strong> for easy organization
+                  When you enter mobile numbers, aadhaar numbers, or QR codes in the inclusion filter, <strong>only those specific registrations</strong> will be included
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">3.</span>
                 <span>
-                  Use district filter to export QR codes for specific regions (e.g., only Khurda district)
+                  All exports are automatically ordered by District → Block → Name for easy organization
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">4.</span>
                 <span>
-                  Use block filter for even more precision (e.g., only Bhubaneswar block)
+                  Use district/block filters to narrow down by region, then add specific mobile/aadhaar numbers to include only certain people
                 </span>
               </li>
               <li className="flex items-start gap-2">

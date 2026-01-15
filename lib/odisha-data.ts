@@ -61,9 +61,9 @@ export const odishaBlocks: Record<string, string[]> = {
     "Turekela",
   ],
 
-  Baleshwar: [
+  Baleswar: [
     "Bahanaga",
-    "Baleshwar",
+    "Baleswar",
     "Baliapal",
     "Basta",
     "Bhograi",
@@ -193,7 +193,7 @@ export const odishaBlocks: Record<string, string[]> = {
     "Danagadi",
     "Dasarathpur",
     "Dharmasala",
-    "Jajapur",
+    "Jajpur",
     "Korei",
     "Rasulpur",
     "Sukinda",
@@ -439,13 +439,13 @@ export const odishaBlocks: Record<string, string[]> = {
 };
 
 export const odishaCategory = [
-  "Poultry Farmers",
+  "Dairy Farmer",
+  "Fodder Farmer",
   "Small Animal Farmers",
+  "Poultry Farmers",
   "Fishers",
   "Fish Seed Producers",
   "Fish Producers",
-  "Dairy Farmer",
-  "Fodder Farmer",
   "Brackish Water Fish Farmer",
   "Bio floc Farmer",
   "Marine Fish Farmer"
