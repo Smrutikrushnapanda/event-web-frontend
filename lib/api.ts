@@ -175,6 +175,23 @@ export interface UpdateRegistrationData {
   category?: string;
 }
 
+
+export interface RegistrationFilters {
+  search?: string;
+  district?: string;
+  block?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedRegistrations {
+  data: RegistrationResponse[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // Registration APIs
 export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
@@ -196,6 +213,43 @@ export const registrationApi = {
         console.error('Request setup error:', error.message);
         throw new Error('Failed to send registration request');
       }
+    }
+  },
+
+   getAllWithFilters: async (filters: RegistrationFilters): Promise<PaginatedRegistrations> => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.district) params.append('district', filters.district);
+      if (filters.block) params.append('block', filters.block);
+      if (filters.page) params.append('page', filters.page.toString());
+      if (filters.limit) params.append('limit', filters.limit.toString());
+
+      const response = await api.get(`/registrations?${params.toString()}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch registrations:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch registrations');
+    }
+  },
+
+  getDistrictsList: async (): Promise<string[]> => {
+    try {
+      const response = await api.get('/registrations/districts');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch districts:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch districts');
+    }
+  },
+
+  getBlocksByDistrict: async (district: string): Promise<string[]> => {
+    try {
+      const response = await api.get(`/registrations/blocks?district=${district}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch blocks:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch blocks');
     }
   },
 

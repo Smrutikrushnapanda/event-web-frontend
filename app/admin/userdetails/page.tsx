@@ -1,0 +1,604 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
+import { RegistrationsDataTable } from "@/components/user-details/table/data-table"
+import { createRegistrationColumns, Registration } from "@/components/user-details/table/columns"
+import { registrationApi } from "@/lib/api"
+import { 
+  Loader2, 
+  AlertCircle, 
+  RefreshCw, 
+  Filter, 
+  MapPin,
+  Building,
+  Search,
+  X,
+  Layers,
+  Users,
+  CheckCircle,
+  Coffee,
+  Utensils,
+  Calendar
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+
+interface Filters {
+  search: string;
+  category: string;
+  district: string;
+  block: string;
+}
+
+export default function UserDetails() {
+  const [registrations, setRegistrations] = useState<Registration[]>([])
+  const [filteredRegistrations, setFilteredRegistrations] = useState<Registration[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize] = useState(10)
+  
+  // Filters state
+  const [filters, setFilters] = useState<Filters>({
+    search: '',
+    category: 'all',
+    district: 'all',
+    block: 'all'
+  })
+
+  // Calculate attendance statistics
+  const attendanceStats = useMemo(() => {
+    const total = filteredRegistrations.length
+    
+    if (total === 0) {
+      return {
+        entry: { count: 0, percentage: 0 },
+        lunch: { count: 0, percentage: 0 },
+        dinner: { count: 0, percentage: 0 },
+        session: { count: 0, percentage: 0 }
+      }
+    }
+
+    const entryCount = filteredRegistrations.filter(r => r.hasEntryCheckIn).length
+    const lunchCount = filteredRegistrations.filter(r => r.hasLunchCheckIn).length
+    const dinnerCount = filteredRegistrations.filter(r => r.hasDinnerCheckIn).length
+    const sessionCount = filteredRegistrations.filter(r => r.hasSessionCheckIn).length
+
+    return {
+      entry: { 
+        count: entryCount, 
+        percentage: Math.round((entryCount / total) * 100) 
+      },
+      lunch: { 
+        count: lunchCount, 
+        percentage: Math.round((lunchCount / total) * 100) 
+      },
+      dinner: { 
+        count: dinnerCount, 
+        percentage: Math.round((dinnerCount / total) * 100) 
+      },
+      session: { 
+        count: sessionCount, 
+        percentage: Math.round((sessionCount / total) * 100) 
+      }
+    }
+  }, [filteredRegistrations])
+
+  // Extract unique values for filters
+  const uniqueCategories = useMemo(() => {
+    const categories = registrations
+      .map(r => r.category)
+      .filter(Boolean)
+      .filter((cat, index, self) => self.indexOf(cat) === index)
+      .sort()
+    return categories
+  }, [registrations])
+
+  const uniqueDistricts = useMemo(() => {
+    const districts = registrations
+      .map(r => r.district)
+      .filter(Boolean)
+      .filter((dist, index, self) => self.indexOf(dist) === index)
+      .sort()
+    return districts
+  }, [registrations])
+
+  const availableBlocks = useMemo(() => {
+    if (filters.district === 'all') {
+      const allBlocks = registrations
+        .map(r => r.block)
+        .filter(Boolean)
+        .filter((block, index, self) => self.indexOf(block) === index)
+        .sort()
+      return allBlocks
+    }
+    const blocks = registrations
+      .filter(r => r.district === filters.district)
+      .map(r => r.block)
+      .filter(Boolean)
+      .filter((block, index, self) => self.indexOf(block) === index)
+      .sort()
+    return blocks
+  }, [filters.district, registrations])
+
+  useEffect(() => {
+    fetchRegistrations()
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      applyFilters()
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [filters, registrations])
+
+  const fetchRegistrations = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await registrationApi.getAll()
+      setRegistrations(data)
+      setFilteredRegistrations(data)
+    } catch (err: any) {
+      console.error('Failed to fetch registrations:', err)
+      setError(err.message || 'Failed to load registrations')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const applyFilters = () => {
+    let filtered = [...registrations]
+
+    // Search filter
+    if (filters.search.trim()) {
+      const searchTerm = filters.search.toLowerCase()
+      filtered = filtered.filter(reg =>
+        reg.name?.toLowerCase().includes(searchTerm) ||
+        reg.mobile?.includes(searchTerm) ||
+        reg.qrCode?.toLowerCase().includes(searchTerm)
+      )
+    }
+
+    // Category filter
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(reg => reg.category === filters.category)
+    }
+
+    // District filter
+    if (filters.district !== 'all') {
+      filtered = filtered.filter(reg => reg.district === filters.district)
+    }
+
+    // Block filter
+    if (filters.block !== 'all') {
+      filtered = filtered.filter(reg => reg.block === filters.block)
+    }
+
+    setFilteredRegistrations(filtered)
+    setPageIndex(0)
+  }
+
+  const handleFilterChange = (key: keyof Filters, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+    if (key === 'district') {
+      setFilters(prev => ({ ...prev, block: 'all' }))
+    }
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      category: 'all',
+      district: 'all',
+      block: 'all'
+    })
+  }
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (filters.search.trim()) count++
+    if (filters.category !== 'all') count++
+    if (filters.district !== 'all') count++
+    if (filters.block !== 'all') count++
+    return count
+  }, [filters])
+
+  const columns = createRegistrationColumns(pageIndex, pageSize)
+
+  if (loading) {
+    return (
+      <div className="w-full rounded-lg border shadow-lg p-12 bg-card">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg font-medium text-muted-foreground">
+            Loading registrations...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="w-full rounded-lg border shadow-lg p-6 bg-card">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchRegistrations}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full rounded-lg border shadow-lg p-6 bg-card">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-card-foreground">
+            Registrations
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            View all event registrations and check-in status
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <div className="text-3xl font-bold text-primary flex items-center gap-2">
+              <Users className="h-8 w-8" />
+              {filteredRegistrations.length}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {activeFilterCount > 0 ? 'Filtered' : 'Total'} Registrations
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchRegistrations}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Attendance Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Entry Card */}
+        <Card className="border-2 border-blue-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-blue-600" />
+              Entry Check-ins
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-3xl font-bold text-blue-600">
+                  {attendanceStats.entry.count}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  of {filteredRegistrations.length} total
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-blue-600">
+                  {attendanceStats.entry.percentage}%
+                </div>
+                <div className="text-xs text-muted-foreground">Attendance</div>
+              </div>
+            </div>
+            <Progress 
+              value={attendanceStats.entry.percentage} 
+              className="h-2 mt-3 bg-blue-100" 
+              indicatorClassName="bg-blue-600"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Lunch Card */}
+        <Card className="border-2 border-green-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Coffee className="h-5 w-5 text-green-600" />
+              Lunch Check-ins
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-3xl font-bold text-green-600">
+                  {attendanceStats.lunch.count}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  of {filteredRegistrations.length} total
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-green-600">
+                  {attendanceStats.lunch.percentage}%
+                </div>
+                <div className="text-xs text-muted-foreground">Attendance</div>
+              </div>
+            </div>
+            <Progress 
+              value={attendanceStats.lunch.percentage} 
+              className="h-2 mt-3 bg-green-100" 
+              indicatorClassName="bg-green-600"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Dinner Card */}
+        <Card className="border-2 border-orange-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Utensils className="h-5 w-5 text-orange-600" />
+              Dinner Check-ins
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-3xl font-bold text-orange-600">
+                  {attendanceStats.dinner.count}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  of {filteredRegistrations.length} total
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-orange-600">
+                  {attendanceStats.dinner.percentage}%
+                </div>
+                <div className="text-xs text-muted-foreground">Attendance</div>
+              </div>
+            </div>
+            <Progress 
+              value={attendanceStats.dinner.percentage} 
+              className="h-2 mt-3 bg-orange-100" 
+              indicatorClassName="bg-orange-600"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Session Card */}
+        <Card className="border-2 border-purple-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-purple-600" />
+              Session Check-ins
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-3xl font-bold text-purple-600">
+                  {attendanceStats.session.count}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  of {filteredRegistrations.length} total
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-purple-600">
+                  {attendanceStats.session.percentage}%
+                </div>
+                <div className="text-xs text-muted-foreground">Attendance</div>
+              </div>
+            </div>
+            <Progress 
+              value={attendanceStats.session.percentage} 
+              className="h-2 mt-3 bg-purple-100" 
+              indicatorClassName="bg-purple-600"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters Section */}
+      <div className="mb-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Filters</span>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {activeFilterCount} active
+              </Badge>
+            )}
+          </div>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+            >
+              Clear all
+            </Button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Search */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Name, mobile, QR code..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                className="w-full pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Category */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Category
+            </label>
+            <Select
+              value={filters.category}
+              onValueChange={(value) => handleFilterChange('category', value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {uniqueCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* District */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              District
+            </label>
+            <Select
+              value={filters.district}
+              onValueChange={(value) => handleFilterChange('district', value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select district" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All districts</SelectItem>
+                {uniqueDistricts.map((district) => (
+                  <SelectItem key={district} value={district}>
+                    {district}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Block */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              Block
+            </label>
+            <Select
+              value={filters.block}
+              onValueChange={(value) => handleFilterChange('block', value)}
+              disabled={filters.district === 'all' && availableBlocks.length === 0}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={
+                  filters.district === 'all' 
+                    ? "Select district first" 
+                    : "Select block"
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {filters.district === 'all' ? 'All blocks' : `All blocks in ${filters.district}`}
+                </SelectItem>
+                {availableBlocks.map((block) => (
+                  <SelectItem key={block} value={block}>
+                    {block}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Active Filters Display */}
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap gap-2 pt-4 border-t">
+            <span className="text-sm text-muted-foreground mr-2">Active filters:</span>
+            {filters.search && (
+              <Badge variant="secondary" className="gap-1 pl-2">
+                Search: {filters.search.length > 20 ? `${filters.search.substring(0, 20)}...` : filters.search}
+                <button
+                  onClick={() => handleFilterChange('search', '')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.category !== 'all' && (
+              <Badge variant="secondary" className="gap-1 pl-2">
+                Category: {filters.category}
+                <button
+                  onClick={() => handleFilterChange('category', 'all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.district !== 'all' && (
+              <Badge variant="secondary" className="gap-1 pl-2">
+                District: {filters.district}
+                <button
+                  onClick={() => handleFilterChange('district', 'all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.block !== 'all' && (
+              <Badge variant="secondary" className="gap-1 pl-2">
+                Block: {filters.block}
+                <button
+                  onClick={() => handleFilterChange('block', 'all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Data Table */}
+      <RegistrationsDataTable 
+        columns={columns} 
+        data={filteredRegistrations} 
+        pageIndex={pageIndex}
+        onPageIndexChange={setPageIndex}
+      />
+    </div>
+  )
+}
