@@ -13,7 +13,7 @@ export const createGuestPassColumns = (
     accessorKey: "qrCode",
     header: "QR Code",
     cell: ({ row }) => (
-      <div className="font-mono text-sm">{row.getValue("qrCode")}</div>
+      <div className="font-mono text-sm font-semibold">{row.getValue("qrCode")}</div>
     ),
   },
   {
@@ -67,7 +67,19 @@ export const createGuestPassColumns = (
     header: "Name",
     cell: ({ row }) => {
       const name = row.getValue("name") as string
-      return <div>{name || "-"}</div>
+      return <div className="font-medium">{name || "-"}</div>
+    },
+  },
+  {
+    accessorKey: "designation",
+    header: "Designation",
+    cell: ({ row }) => {
+      const designation = row.original.designation
+      return (
+        <div className="text-sm text-gray-600">
+          {designation || "-"}
+        </div>
+      )
     },
   },
   {
@@ -75,7 +87,7 @@ export const createGuestPassColumns = (
     header: "Mobile",
     cell: ({ row }) => {
       const mobile = row.getValue("mobile") as string
-      return <div>{mobile || "-"}</div>
+      return <div className="font-mono text-sm">{mobile || "-"}</div>
     },
   },
   {
@@ -86,16 +98,16 @@ export const createGuestPassColumns = (
       return (
         <div className="flex gap-1">
           {pass.hasEntryCheckIn && (
-            <Badge variant="outline" className="text-xs">E</Badge>
+            <Badge variant="outline" className="text-xs bg-blue-50">E</Badge>
           )}
           {pass.hasLunchCheckIn && (
-            <Badge variant="outline" className="text-xs">L</Badge>
+            <Badge variant="outline" className="text-xs bg-green-50">L</Badge>
           )}
           {pass.hasDinnerCheckIn && (
-            <Badge variant="outline" className="text-xs">D</Badge>
+            <Badge variant="outline" className="text-xs bg-orange-50">D</Badge>
           )}
           {pass.hasSessionCheckIn && (
-            <Badge variant="outline" className="text-xs">S</Badge>
+            <Badge variant="outline" className="text-xs bg-purple-50">S</Badge>
           )}
         </div>
       )
@@ -110,15 +122,24 @@ export const createGuestPassColumns = (
 
       return (
         <div className="flex items-center gap-2">
-          {!isAssigned && (
+          {!isAssigned ? (
             <Button
               size="sm"
               variant="outline"
               onClick={() => onAssign(pass)}
-              className="gap-2"
+              className="gap-2 hover:bg-purple-50"
             >
               <UserPlus className="w-4 h-4" />
               Assign
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onAssign(pass)}
+              className="gap-2"
+            >
+              Edit
             </Button>
           )}
         </div>

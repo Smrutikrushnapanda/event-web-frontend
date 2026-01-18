@@ -103,6 +103,7 @@ export interface GuestPass {
   isAssigned: boolean;
   name?: string;
   mobile?: string;
+  designation?: string;
   assignedBy?: string;
   assignedAt?: string;
   hasEntryCheckIn: boolean;
@@ -117,7 +118,7 @@ export interface GuestStatisticsResponse {
   totalPasses: number;
   totalAssigned: number;
   totalUnassigned: number;
-  assignmentPercentage: number;
+  assignmentPercentage: string;
   byCategory: {
     DELEGATE: number;
     VVIP: number;
@@ -130,17 +131,9 @@ export interface GuestStatisticsResponse {
     session: number;
     total: number;
   };
-  blockWise?: Record<string, {
-    total: number;
-    assigned: number;
-    checkIns: {
-      entry: number;
-      lunch: number;
-      dinner: number;
-      session: number;
-    };
-  }>;
+  generatedAt: string;
 }
+
 
 export interface GenerateGuestPassesData {
   delegates: number;
@@ -161,6 +154,18 @@ export interface AssignGuestPassData {
   name: string;
   mobile: string;
   assignedBy: string;
+}
+
+export interface GeneratePassesDto {
+  delegates?: number;
+  vvip?: number;
+  visitors?: number;
+}
+export interface AssignDetailsDto {
+  name: string;
+  mobile?: string;
+  designation?: string;
+  assignedBy?: string;
 }
 
 export interface UpdateRegistrationData {
@@ -324,124 +329,51 @@ update: async (id: string, data: UpdateRegistrationData): Promise<RegistrationRe
 
 // Guest Pass APIs
 export const guestPassApi = {
-  getAll: async (): Promise<GuestPass[]> => {
-    try {
-      const response = await api.get('/guest-passes');
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch guest passes:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch guest passes');
-    }
+  async generate(dto: GeneratePassesDto) {
+    const response = await fetch(`${API_BASE_URL}/guest-passes/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    });
+    if (!response.ok) throw new Error('Failed to generate passes');
+    return response.json();
   },
 
-  getStatistics: async (includeBlockWise: boolean = false): Promise<GuestStatisticsResponse> => {
-    try {
-      const url = includeBlockWise 
-        ? '/guest-passes/statistics?includeBlockWise=true'
-        : '/guest-passes/statistics';
-      const response = await api.get(url);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch guest pass statistics:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
-    }
+  async getAll(filters?: { category?: string; isAssigned?: boolean }): Promise<GuestPass[]> {
+    const params = new URLSearchParams();
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.isAssigned !== undefined) params.append('isAssigned', String(filters.isAssigned));
+    
+    const response = await fetch(`${API_BASE_URL}/guest-passes?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch passes');
+    return response.json();
   },
 
-  generate: async (data: GenerateGuestPassesData): Promise<GenerateGuestPassesResponse> => {
-    try {
-      const response = await api.post('/guest-passes/generate', data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to generate guest passes:', error);
-      throw new Error(error.response?.data?.message || 'Failed to generate passes');
-    }
+  async getStatistics(includeBreakdown = false): Promise<GuestStatisticsResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/guest-passes/statistics?includeBreakdown=${includeBreakdown}`
+    );
+    if (!response.ok) throw new Error('Failed to fetch statistics');
+    return response.json();
   },
 
-  assignDetails: async (qrCode: string, data: AssignGuestPassData): Promise<GuestPass> => {
-    try {
-      const response = await api.post(`/guest-passes/${qrCode}/assign`, data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to assign guest pass details:', error);
-      throw new Error(error.response?.data?.message || 'Failed to assign details');
+  async assignDetails(qrCode: string, dto: AssignDetailsDto): Promise<GuestPass> {
+    const response = await fetch(`${API_BASE_URL}/guest-passes/${qrCode}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to assign details');
     }
+    return response.json();
   },
 
-  getByQrCode: async (qrCode: string): Promise<GuestPass> => {
-    try {
-      const response = await api.get(`/guest-passes/qr/${qrCode}`);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch guest pass:', error);
-      throw new Error(error.response?.data?.message || 'Guest pass not found');
-    }
-  },
-
-  fastCheckIn: async (qrCode: string, data: { type: string; scannedBy?: string }) => {
-    try {
-      const response = await api.post(`/guest-passes/fast-checkin/${qrCode}`, data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to check-in guest pass:', error);
-      throw new Error(error.response?.data?.message || 'Check-in failed');
-    }
-  },
-
-  exportCSV: async (): Promise<void> => {
-    try {
-      const response = await api.get('/guest-passes/export/csv', {
-        responseType: 'blob',
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `guest-passes-${Date.now()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error: any) {
-      console.error('Failed to export CSV:', error);
-      throw new Error(error.response?.data?.message || 'Export failed');
-    }
-  },
-
-  exportExcel: async (): Promise<void> => {
-    try {
-      const response = await api.get('/guest-passes/export/excel', {
-        responseType: 'blob',
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `guest-passes-${Date.now()}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error: any) {
-      console.error('Failed to export Excel:', error);
-      throw new Error(error.response?.data?.message || 'Export failed');
-    }
-  },
-
-  exportQRPdf: async (): Promise<void> => {
-    try {
-      const response = await api.get('/guest-passes/export/qr-pdf', {
-        responseType: 'blob',
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `guest-passes-qr-${Date.now()}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error: any) {
-      console.error('Failed to export QR PDF:', error);
-      throw new Error(error.response?.data?.message || 'Export failed');
-    }
+  async getByQrCode(qrCode: string): Promise<GuestPass> {
+    const response = await fetch(`${API_BASE_URL}/guest-passes/qr/${qrCode}`);
+    if (!response.ok) throw new Error('Pass not found');
+    return response.json();
   },
 };
 

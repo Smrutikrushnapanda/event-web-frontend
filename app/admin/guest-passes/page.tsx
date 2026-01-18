@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,13 +18,12 @@ import {
   Users,
   UserPlus,
   BarChart3,
-  CheckCircle,
-  XCircle,
   Search,
   RefreshCw,
+  Upload,
+  FileSpreadsheet,
 } from "lucide-react";
 import { guestPassApi, GuestStatisticsResponse, GuestPass } from "@/lib/api";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -42,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { GuestPassesDataTable } from "../../../components/manage-pass/table/data-table";
 import { createGuestPassColumns } from "../../../components/manage-pass/table/columns";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function GuestPassesPage() {
   const [loading, setLoading] = useState(false);
@@ -60,6 +60,12 @@ export default function GuestPassesPage() {
   const [selectedPass, setSelectedPass] = useState<GuestPass | null>(null);
   const [assignName, setAssignName] = useState("");
   const [assignMobile, setAssignMobile] = useState("");
+  const [assignDesignation, setAssignDesignation] = useState("");
+
+  // Bulk Upload Dialog
+  const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchStatistics();
@@ -91,19 +97,16 @@ export default function GuestPassesPage() {
   const applyFilters = () => {
     let filtered = [...passes];
 
-    // Search by QR Code
     if (searchQR) {
       filtered = filtered.filter((p) =>
         p.qrCode.toLowerCase().includes(searchQR.toLowerCase())
       );
     }
 
-    // Filter by Category
     if (filterCategory !== "ALL") {
       filtered = filtered.filter((p) => p.category === filterCategory);
     }
 
-    // Filter by Assignment Status
     if (filterAssigned === "ASSIGNED") {
       filtered = filtered.filter((p) => p.isAssigned);
     } else if (filterAssigned === "UNASSIGNED") {
@@ -129,7 +132,6 @@ export default function GuestPassesPage() {
             .join("\n")
       );
       
-      // Refresh data
       await fetchStatistics();
       await fetchPasses();
     } catch (error: any) {
@@ -143,18 +145,17 @@ export default function GuestPassesPage() {
     setSelectedPass(pass);
     setAssignName("");
     setAssignMobile("");
+    setAssignDesignation("");
     setShowAssignDialog(true);
   };
 
   const handleAssign = async () => {
-    if (!selectedPass) return;
-    
-    if (!assignName || !assignMobile) {
-      alert("Please fill all fields");
+    if (!selectedPass || !assignName) {
+      alert("Please enter name");
       return;
     }
 
-    if (!/^[6-9]\d{9}$/.test(assignMobile)) {
+    if (assignMobile && !/^[6-9]\d{9}$/.test(assignMobile)) {
       alert("Please enter a valid 10-digit mobile number");
       return;
     }
@@ -163,14 +164,14 @@ export default function GuestPassesPage() {
     try {
       await guestPassApi.assignDetails(selectedPass.qrCode, {
         name: assignName,
-        mobile: assignMobile,
+        mobile: assignMobile || undefined,
+        designation: assignDesignation || undefined,
         assignedBy: "Admin",
       });
 
       alert(`✅ Details assigned to ${selectedPass.qrCode}`);
       setShowAssignDialog(false);
       
-      // Refresh data
       await fetchStatistics();
       await fetchPasses();
     } catch (error: any) {
@@ -180,7 +181,72 @@ export default function GuestPassesPage() {
     }
   };
 
-  // Create columns for the data table
+  const handleBulkUpload = async () => {
+    if (!uploadFile) {
+      alert("Please select an Excel file");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("assignedBy", "Admin");
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/guest-passes/bulk-assign`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Upload failed");
+      }
+
+      let message = `✅ Bulk assignment completed!\n\n`;
+      message += `Total: ${result.total}\n`;
+      message += `Success: ${result.success}\n`;
+      message += `Failed: ${result.failed.length}\n`;
+
+      if (result.failed.length > 0) {
+        message += `\nFailed entries:\n`;
+        result.failed.slice(0, 5).forEach((f: any) => {
+          message += `- ${f.qrCode}: ${f.reason}\n`;
+        });
+        if (result.failed.length > 5) {
+          message += `... and ${result.failed.length - 5} more`;
+        }
+      }
+
+      alert(message);
+      setShowBulkDialog(false);
+      setUploadFile(null);
+      
+      await fetchStatistics();
+      await fetchPasses();
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadExcelTemplate = () => {
+    const template = `qrCode,name,mobile,designation
+DELEGATE-001,John Doe,9876543210,Chief Executive Officer
+DELEGATE-002,Jane Smith,,Senior Manager
+VVIP-001,Dr. Kumar,9988776655,Director`;
+
+    const blob = new Blob([template], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "guest_passes_template.csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const columns = createGuestPassColumns(openAssignDialog);
 
   return (
@@ -352,15 +418,25 @@ export default function GuestPassesPage() {
                 </CardDescription>
               </div>
               
-              <Button
-                onClick={fetchPasses}
-                variant="outline"
-                size="sm"
-                className="w-full md:w-auto"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh List
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowBulkDialog(true)}
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Bulk Upload
+                </Button>
+                
+                <Button
+                  onClick={fetchPasses}
+                  variant="outline"
+                  size="sm"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -409,7 +485,6 @@ export default function GuestPassesPage() {
               </div>
             </div>
 
-            {/* Data Table */}
             <GuestPassesDataTable
               columns={columns}
               data={filteredPasses}
@@ -424,13 +499,13 @@ export default function GuestPassesPage() {
             <DialogHeader>
               <DialogTitle>Assign Details to {selectedPass?.qrCode}</DialogTitle>
               <DialogDescription>
-                Add name and mobile number to this guest pass
+                Add name, mobile (optional), and designation (optional)
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div>
-                <Label>Name</Label>
+                <Label>Name *</Label>
                 <Input
                   placeholder="Enter full name"
                   value={assignName}
@@ -440,12 +515,22 @@ export default function GuestPassesPage() {
               </div>
 
               <div>
-                <Label>Mobile Number</Label>
+                <Label>Mobile Number (Optional)</Label>
                 <Input
                   placeholder="10-digit mobile number"
                   value={assignMobile}
                   onChange={(e) => setAssignMobile(e.target.value)}
                   maxLength={10}
+                  className="mt-2"
+                />
+              </div>
+
+              <div>
+                <Label>Designation (Optional)</Label>
+                <Input
+                  placeholder="e.g., Chief Executive Officer"
+                  value={assignDesignation}
+                  onChange={(e) => setAssignDesignation(e.target.value)}
                   className="mt-2"
                 />
               </div>
@@ -473,6 +558,103 @@ export default function GuestPassesPage() {
                   <>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Assign Details
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Upload Dialog */}
+        <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Bulk Upload Guest Details</DialogTitle>
+              <DialogDescription>
+                Upload an Excel file with guest details to assign them to passes
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Excel Format:</h4>
+                <p className="text-sm text-gray-700 mb-2">
+                  Your Excel should have these columns:
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1 ml-4">
+                  <li>• <strong>qrCode</strong> (required) - e.g., DELEGATE-001</li>
+                  <li>• <strong>name</strong> (required) - Full name</li>
+                  <li>• <strong>mobile</strong> (optional) - 10-digit number</li>
+                  <li>• <strong>designation</strong> (optional) - Job title</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={downloadExcelTemplate}
+                  className="flex-1"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Template
+                </Button>
+              </div>
+
+              <div>
+                <Label>Upload Excel File</Label>
+                <div className="mt-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    {uploadFile ? uploadFile.name : "Choose File"}
+                  </Button>
+                </div>
+              </div>
+
+              {uploadFile && (
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    ✓ File selected: <strong>{uploadFile.name}</strong>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowBulkDialog(false);
+                  setUploadFile(null);
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkUpload}
+                disabled={loading || !uploadFile}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload & Assign
                   </>
                 )}
               </Button>
