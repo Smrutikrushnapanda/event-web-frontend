@@ -45,9 +45,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function GuestPassesPage() {
   const [loading, setLoading] = useState(false);
-  const [delegates, setDelegates] = useState(500);
-  const [vvip, setVvip] = useState(100);
-  const [visitors, setVisitors] = useState(1000);
+  const [delegates, setDelegates] = useState("");
+  const [vvip, setVvip] = useState("");
+  const [visitors, setVisitors] = useState("");
   const [stats, setStats] = useState<GuestStatisticsResponse | null>(null);
   const [passes, setPasses] = useState<GuestPass[]>([]);
   const [filteredPasses, setFilteredPasses] = useState<GuestPass[]>([]);
@@ -117,20 +117,35 @@ export default function GuestPassesPage() {
   };
 
   const handleGenerate = async () => {
-    if (delegates === 0 && vvip === 0 && visitors === 0) {
+    const delegatesNum = delegates ? Number(delegates) : 0;
+    const vvipNum = vvip ? Number(vvip) : 0;
+    const visitorsNum = visitors ? Number(visitors) : 0;
+
+    if (delegatesNum === 0 && vvipNum === 0 && visitorsNum === 0) {
       alert("Please enter at least one pass count");
       return;
     }
 
     setLoading(true);
     try {
-      const data = await guestPassApi.generate({ delegates, vvip, visitors });
+      // ✅ Only send properties that have values (backend requires min: 1)
+      const payload: any = {};
+      if (delegatesNum > 0) payload.delegates = delegatesNum;
+      if (vvipNum > 0) payload.vvip = vvipNum;
+      if (visitorsNum > 0) payload.visitors = visitorsNum;
+
+      const data = await guestPassApi.generate(payload);
       alert(
         `✅ Generated ${data.generated} passes!\n\n` +
           Object.entries(data.categories)
             .map(([cat, info]: any) => `${cat}: ${info.range}`)
             .join("\n")
       );
+      
+      // Clear inputs after successful generation
+      setDelegates("");
+      setVvip("");
+      setVisitors("");
       
       await fetchStatistics();
       await fetchPasses();
@@ -247,6 +262,13 @@ VVIP-001,Dr. Kumar,9988776655,Director`;
     window.URL.revokeObjectURL(url);
   };
 
+  const getTotalPasses = () => {
+    const delegatesNum = delegates ? Number(delegates) : 0;
+    const vvipNum = vvip ? Number(vvip) : 0;
+    const visitorsNum = visitors ? Number(visitors) : 0;
+    return delegatesNum + vvipNum + visitorsNum;
+  };
+
   const columns = createGuestPassColumns(openAssignDialog);
 
   return (
@@ -343,41 +365,44 @@ VVIP-001,Dr. Kumar,9988776655,Director`;
               Generate Guest Passes
             </CardTitle>
             <CardDescription>
-              Create pre-numbered QR codes. Numbers continue from last generation.
+              Enter the number of passes for each category you want to generate. Leave blank for categories you don't need.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label>DELEGATE Passes</Label>
+                <Label>DELEGATE Passes (Optional)</Label>
                 <Input
                   type="number"
                   value={delegates}
-                  onChange={(e) => setDelegates(Number(e.target.value))}
+                  onChange={(e) => setDelegates(e.target.value)}
                   min={0}
                   max={10000}
+                  placeholder="0"
                   className="mt-2"
                 />
               </div>
               <div>
-                <Label>VVIP Passes</Label>
+                <Label>VVIP Passes (Optional)</Label>
                 <Input
                   type="number"
                   value={vvip}
-                  onChange={(e) => setVvip(Number(e.target.value))}
+                  onChange={(e) => setVvip(e.target.value)}
                   min={0}
                   max={10000}
+                  placeholder="0"
                   className="mt-2"
                 />
               </div>
               <div>
-                <Label>VISITOR Passes</Label>
+                <Label>VISITOR Passes (Optional)</Label>
                 <Input
                   type="number"
                   value={visitors}
-                  onChange={(e) => setVisitors(Number(e.target.value))}
+                  onChange={(e) => setVisitors(e.target.value)}
                   min={0}
                   max={10000}
+                  placeholder="0"
                   className="mt-2"
                 />
               </div>
@@ -385,7 +410,7 @@ VVIP-001,Dr. Kumar,9988776655,Director`;
 
             <Button
               onClick={handleGenerate}
-              disabled={loading}
+              disabled={loading || getTotalPasses() === 0}
               size="lg"
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 h-14"
             >
@@ -397,7 +422,7 @@ VVIP-001,Dr. Kumar,9988776655,Director`;
               ) : (
                 <>
                   <QrCode className="w-6 h-6 mr-3" />
-                  Generate {delegates + vvip + visitors} Passes
+                  Generate {getTotalPasses() > 0 ? getTotalPasses() : ""} {getTotalPasses() === 1 ? "Pass" : "Passes"}
                 </>
               )}
             </Button>
