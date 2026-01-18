@@ -10,6 +10,7 @@ export default function FeedbackPage() {
   const [answers, setAnswers] = useState<FeedbackResponse[]>([]);
   const [language, setLanguage] = useState<"odia" | "english">("odia");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [hoveredStar, setHoveredStar] = useState<{ [key: string]: number }>({});
@@ -20,11 +21,15 @@ export default function FeedbackPage() {
 
   const fetchQuestions = async () => {
     try {
+      console.log('Fetching questions from API...');
       const data = await feedbackApi.getActiveQuestions();
+      console.log('Questions received:', data);
       setQuestions(data);
       setAnswers(data.map((q) => ({ questionId: q.id, rating: 0 })));
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch questions:", error);
+      setError(error instanceof Error ? error.message : 'Failed to load questions');
     } finally {
       setLoading(false);
     }
@@ -87,6 +92,39 @@ export default function FeedbackPage() {
         >
           <Loader2 className="w-12 h-12 animate-spin text-sky-500 mx-auto mb-4" />
           <p className="text-gray-600 font-medium">Loading questions...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-white p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center max-w-md bg-white rounded-3xl shadow-xl p-8"
+        >
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            {language === "english" ? "Error Loading Questions" : "ପ୍ରଶ୍ନ ଲୋଡ୍ କରିବାରେ ତ୍ରୁଟି"}
+          </h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setError(null);
+              fetchQuestions();
+            }}
+            className="px-6 py-3 bg-gradient-to-r from-sky-500 to-blue-500 text-white font-semibold rounded-full hover:shadow-lg transition-all"
+          >
+            {language === "english" ? "Try Again" : "ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ"}
+          </button>
+          <p className="text-sm text-gray-500 mt-4">
+            API: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}
+          </p>
         </motion.div>
       </div>
     );
@@ -157,7 +195,7 @@ export default function FeedbackPage() {
       />
 
       {/* Header */}
-      <header className="w-full py-4 relative z-10">
+      <header className="w-full py-4 relative z-10 bg-white shadow-sm">
         <div className="w-full px-4 md:px-6">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4" style={{ alignItems: "center" }}>
             <img
@@ -394,10 +432,11 @@ export default function FeedbackPage() {
         </motion.div>
       </motion.div>
 
+      {/* Fish & Cow Illustration */}
       <img
         src="/images/fish-cow.png"
         alt="Fish & Cow Illustration"
-        className="absolute bottom-0 right-4 md:right-6 w-[120px] md:w-[220px] lg:w-[260px] xl:w-[300px] pointer-events-none z-10"
+        className="absolute bottom-0 right-4 md:right-6 w-[180px] md:w-[220px] lg:w-[260px] xl:w-[300px] pointer-events-none z-10"
       />
 
       {/* Grass Footer */}
