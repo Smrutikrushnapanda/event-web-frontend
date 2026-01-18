@@ -197,6 +197,62 @@ export interface PaginatedRegistrations {
   totalPages: number;
 }
 
+export interface FeedbackQuestion {
+  id: string;
+  questionEnglish: string;
+  questionOdia: string;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackResponse {
+  questionId: string;
+  rating: number;
+  comment?: string;
+}
+
+export interface BulkFeedbackSubmission {
+  responses: FeedbackResponse[];
+}
+
+export interface CreateFeedbackQuestionData {
+  questionEnglish: string;
+  questionOdia: string;
+  order?: number;
+}
+
+export interface UpdateFeedbackQuestionData {
+  questionEnglish?: string;
+  questionOdia?: string;
+  order?: number;
+  isActive?: boolean;
+}
+
+export interface FeedbackStatistics {
+  question: FeedbackQuestion;
+  totalResponses: number;
+  averageRating: string;
+  ratings: {
+    rating: number;
+    count: number;
+    percentage: string;
+  }[];
+  recentComments: {
+    rating: number;
+    comment: string;
+    createdAt: string;
+  }[];
+}
+
+export interface AllFeedbackStatistics {
+  totalQuestions: number;
+  totalResponses: number;
+  overallAverage: string;
+  questionStats: FeedbackStatistics[];
+}
+
 // Registration APIs
 export const registrationApi = {
   create: async (data: CreateRegistrationData): Promise<RegistrationResponse> => {
@@ -374,6 +430,98 @@ export const guestPassApi = {
     const response = await fetch(`${API_BASE_URL}/guest-passes/qr/${qrCode}`);
     if (!response.ok) throw new Error('Pass not found');
     return response.json();
+  },
+};
+
+export const feedbackApi = {
+  // Public APIs
+  getActiveQuestions: async (): Promise<FeedbackQuestion[]> => {
+    try {
+      const response = await api.get('/feedback/questions');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch questions:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch questions');
+    }
+  },
+
+  submitFeedback: async (data: BulkFeedbackSubmission): Promise<{ submitted: number }> => {
+    try {
+      const response = await api.post('/feedback/submit', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to submit feedback:', error);
+      throw new Error(error.response?.data?.message || 'Failed to submit feedback');
+    }
+  },
+
+  // Admin APIs
+  getAllQuestions: async (includeInactive = false): Promise<FeedbackQuestion[]> => {
+    try {
+      const response = await api.get(`/feedback/admin/questions?includeInactive=${includeInactive}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch all questions:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch questions');
+    }
+  },
+
+  createQuestion: async (data: CreateFeedbackQuestionData): Promise<FeedbackQuestion> => {
+    try {
+      const response = await api.post('/feedback/admin/questions', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create question:', error);
+      throw new Error(error.response?.data?.message || 'Failed to create question');
+    }
+  },
+
+  updateQuestion: async (id: string, data: UpdateFeedbackQuestionData): Promise<FeedbackQuestion> => {
+    try {
+      const response = await api.put(`/feedback/admin/questions/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to update question:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update question');
+    }
+  },
+
+  deleteQuestion: async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/feedback/admin/questions/${id}`);
+    } catch (error: any) {
+      console.error('Failed to delete question:', error);
+      throw new Error(error.response?.data?.message || 'Failed to delete question');
+    }
+  },
+
+  reorderQuestions: async (orders: { id: string; order: number }[]): Promise<void> => {
+    try {
+      await api.post('/feedback/admin/questions/reorder', orders);
+    } catch (error: any) {
+      console.error('Failed to reorder questions:', error);
+      throw new Error(error.response?.data?.message || 'Failed to reorder questions');
+    }
+  },
+
+  getStatistics: async (): Promise<AllFeedbackStatistics> => {
+    try {
+      const response = await api.get('/feedback/admin/statistics');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch statistics:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
+    }
+  },
+
+  getQuestionStatistics: async (questionId: string): Promise<FeedbackStatistics> => {
+    try {
+      const response = await api.get(`/feedback/admin/statistics/${questionId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch question statistics:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch statistics');
+    }
   },
 };
 
