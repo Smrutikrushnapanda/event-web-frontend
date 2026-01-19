@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { registrationApi, RegistrationResponse } from "@/lib/api";
 import {
@@ -24,14 +24,24 @@ export default function QRCodePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (qrCode) {
-      fetchRegistration();
+  // Helper function to safely format Aadhaar number
+  const formatAadhaar = (aadhaar: string | undefined) => {
+    if (!aadhaar) return "N/A";
+    if (aadhaar.length === 12) {
+      return aadhaar.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3");
     }
-  }, [qrCode]);
+    return aadhaar;
+  };
 
-  const fetchRegistration = async () => {
+  const fetchRegistration = useCallback(async () => {
+    if (!qrCode) {
+      setError("No QR code provided");
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoading(true);
       const response = await registrationApi.getByQrCode(qrCode);
       setRegistration(response);
 
@@ -45,13 +55,18 @@ export default function QRCodePage() {
         },
       });
       setQrCodeDataUrl(dataUrl);
+      setError("");
     } catch (err: any) {
       console.error("Failed to fetch registration:", err);
-      setError(err.message || "Failed to load registration");
+      setError(err.response?.data?.message || err.message || "Failed to load registration");
     } finally {
       setLoading(false);
     }
-  };
+  }, [qrCode]);
+
+  useEffect(() => {
+    fetchRegistration();
+  }, [fetchRegistration]);
 
   const handlePrint = async () => {
     if (!registration || !qrCodeDataUrl) return;
@@ -59,12 +74,17 @@ export default function QRCodePage() {
     let photoBase64 = "";
     if (registration.photoUrl) {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-        const response = await fetch(`${baseUrl}${registration.photoUrl}`);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        const photoUrl = registration.photoUrl.startsWith('http') 
+          ? registration.photoUrl 
+          : `${baseUrl}${registration.photoUrl}`;
+        
+        const response = await fetch(photoUrl);
         const blob = await response.blob();
-        photoBase64 = await new Promise<string>((resolve) => {
+        photoBase64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
       } catch (error) {
@@ -187,10 +207,10 @@ export default function QRCodePage() {
   };
 
   const handleDownload = () => {
-    if (!qrCodeDataUrl) return;
+    if (!qrCodeDataUrl || !registration) return;
 
     const link = document.createElement("a");
-    link.download = `QR-${registration?.qrCode}.png`;
+    link.download = `QR-${registration.qrCode}.png`;
     link.href = qrCodeDataUrl;
     link.click();
   };
@@ -237,6 +257,13 @@ export default function QRCodePage() {
     );
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const photoUrl = registration.photoUrl 
+    ? (registration.photoUrl.startsWith('http') 
+        ? registration.photoUrl 
+        : `${baseUrl}${registration.photoUrl}`)
+    : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-3xl mx-auto">
@@ -259,10 +286,10 @@ export default function QRCodePage() {
             {/* QR Code Display */}
             <div className="bg-white rounded-xl p-8 shadow-lg border-4 border-blue-500">
               <div className="flex flex-col items-center space-y-4">
-                {registration.photoUrl && (
+                {photoUrl && (
                   <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
                     <img
-                      src={`${process.env.NEXT_PUBLIC_API_URL}${registration.photoUrl}`}
+                      src={photoUrl}
                       alt="Profile"
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -308,16 +335,16 @@ export default function QRCodePage() {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <DetailBox label="Name" value={registration.name} />
-                <DetailBox label="Mobile" value={registration.mobile} />
-                <DetailBox label="Village" value={registration.village} />
-                <DetailBox label="GP" value={registration.gp} />
-                <DetailBox label="District" value={registration.district} />
-                <DetailBox label="Block" value={registration.block} />
-                <DetailBox label="Category" value={registration.category} />
+                <DetailBox label="Name" value={registration.name || "N/A"} />
+                <DetailBox label="Mobile" value={registration.mobile || "N/A"} />
+                <DetailBox label="Village" value={registration.village || "N/A"} />
+                <DetailBox label="GP" value={registration.gp || "N/A"} />
+                <DetailBox label="District" value={registration.district || "N/A"} />
+                <DetailBox label="Block" value={registration.block || "N/A"} />
+                <DetailBox label="Category" value={registration.category || "N/A"} />
                 <DetailBox 
                   label="Aadhaar/ID" 
-                  value={registration.aadhaarOrId.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")} 
+                  value={formatAadhaar(registration.aadhaarOrId)} 
                 />
               </div>
             </div>
