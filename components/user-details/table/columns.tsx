@@ -11,6 +11,7 @@ export interface CheckIn {
   wasBehalf: boolean;
   scannedAt: string;
   registrationId: string;
+  checkInDate: string; // Added: Format YYYY-MM-DD
 }
 
 export interface Registration {

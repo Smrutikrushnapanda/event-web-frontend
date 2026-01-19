@@ -63,6 +63,7 @@ export default function ManageFeedbackPage() {
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionWithStats | null>(null);
   const [stats, setStats] = useState<FeedbackStatistics | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [overallStats, setOverallStats] = useState<{
     totalQuestions: number;
     totalResponses: number;
@@ -108,6 +109,9 @@ export default function ManageFeedbackPage() {
       return;
     }
 
+    if (submitting) return;
+    setSubmitting(true);
+
     try {
       await feedbackApi.createQuestion({
         questionEnglish,
@@ -122,6 +126,8 @@ export default function ManageFeedbackPage() {
     } catch (error) {
       console.error("Failed to add question:", error);
       alert("Failed to add question");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -130,6 +136,9 @@ export default function ManageFeedbackPage() {
       alert("Please fill in both English and Odia questions");
       return;
     }
+
+    if (submitting) return;
+    setSubmitting(true);
 
     try {
       await feedbackApi.updateQuestion(selectedQuestion.id, {
@@ -144,6 +153,8 @@ export default function ManageFeedbackPage() {
     } catch (error) {
       console.error("Failed to update question:", error);
       alert("Failed to update question");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -503,10 +514,15 @@ export default function ManageFeedbackPage() {
               </Button>
               <Button
                 onClick={handleAddQuestion}
+                disabled={submitting}
                 className="bg-gradient-to-r from-green-600 to-emerald-600"
               >
-                <Save className="w-4 h-4 mr-2" />
-                Add Question
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {submitting ? "Adding..." : "Add Question"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -549,10 +565,15 @@ export default function ManageFeedbackPage() {
               </Button>
               <Button
                 onClick={handleUpdateQuestion}
+                disabled={submitting}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600"
               >
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {submitting ? "Saving..." : "Save Changes"}
               </Button>
             </DialogFooter>
           </DialogContent>

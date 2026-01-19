@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { RegistrationsDataTable } from "@/components/user-details/table/data-table"
 import { createRegistrationColumns, Registration } from "@/components/user-details/table/columns"
 import { registrationApi } from "@/lib/api"
+import { odishaDistricts, odishaBlocks, odishaCategory } from "@/lib/odisha-data"
 import { 
   Loader2, 
   AlertCircle, 
@@ -39,6 +40,7 @@ interface Filters {
   category: string;
   district: string;
   block: string;
+  date: string; // Format: YYYY-MM-DD or 'all'
 }
 
 export default function UserDetails() {
@@ -54,11 +56,85 @@ export default function UserDetails() {
     search: '',
     category: 'all',
     district: 'all',
-    block: 'all'
+    block: 'all',
+    date: 'all'
   })
 
-  // Calculate attendance statistics
+  // Extract available dates from check-ins (from scannedAt timestamps)
+  const availableDates = useMemo(() => {
+    const dates = new Set<string>()
+    registrations.forEach(reg => {
+      reg.checkIns.forEach(checkIn => {
+        if (checkIn.scannedAt) {
+          // Extract date from scannedAt timestamp (YYYY-MM-DD)
+          const date = checkIn.scannedAt.split('T')[0]
+          dates.add(date)
+        }
+      })
+    })
+    return Array.from(dates).sort((a, b) => b.localeCompare(a)) // Latest first
+  }, [registrations])
+
+  // Calculate attendance statistics (date-aware)
   const attendanceStats = useMemo(() => {
+    const selectedDate = filters.date
+    
+    let relevantRegistrations = filteredRegistrations
+
+    // If a specific date is selected, filter check-ins by that date
+    if (selectedDate !== 'all') {
+      // Count registrations that have check-ins on the selected date (extracted from scannedAt)
+      const entryCount = filteredRegistrations.filter(r => 
+        r.checkIns.some(ci => {
+          const scannedDate = ci.scannedAt ? ci.scannedAt.split('T')[0] : null
+          return ci.type === 'entry' && scannedDate === selectedDate
+        })
+      ).length
+
+      const lunchCount = filteredRegistrations.filter(r => 
+        r.checkIns.some(ci => {
+          const scannedDate = ci.scannedAt ? ci.scannedAt.split('T')[0] : null
+          return ci.type === 'lunch' && scannedDate === selectedDate
+        })
+      ).length
+
+      const dinnerCount = filteredRegistrations.filter(r => 
+        r.checkIns.some(ci => {
+          const scannedDate = ci.scannedAt ? ci.scannedAt.split('T')[0] : null
+          return ci.type === 'dinner' && scannedDate === selectedDate
+        })
+      ).length
+
+      const sessionCount = filteredRegistrations.filter(r => 
+        r.checkIns.some(ci => {
+          const scannedDate = ci.scannedAt ? ci.scannedAt.split('T')[0] : null
+          return ci.type === 'session' && scannedDate === selectedDate
+        })
+      ).length
+
+      const total = filteredRegistrations.length
+
+      return {
+        entry: { 
+          count: entryCount, 
+          percentage: total > 0 ? Math.round((entryCount / total) * 100) : 0
+        },
+        lunch: { 
+          count: lunchCount, 
+          percentage: total > 0 ? Math.round((lunchCount / total) * 100) : 0
+        },
+        dinner: { 
+          count: dinnerCount, 
+          percentage: total > 0 ? Math.round((dinnerCount / total) * 100) : 0
+        },
+        session: { 
+          count: sessionCount, 
+          percentage: total > 0 ? Math.round((sessionCount / total) * 100) : 0
+        }
+      }
+    }
+
+    // If 'all' dates, use the existing hasXCheckIn flags
     const total = filteredRegistrations.length
     
     if (total === 0) {
@@ -93,44 +169,23 @@ export default function UserDetails() {
         percentage: Math.round((sessionCount / total) * 100) 
       }
     }
-  }, [filteredRegistrations])
+  }, [filteredRegistrations, filters.date])
 
-  // Extract unique values for filters
-  const uniqueCategories = useMemo(() => {
-    const categories = registrations
-      .map(r => r.category)
-      .filter(Boolean)
-      .filter((cat, index, self) => self.indexOf(cat) === index)
-      .sort()
-    return categories
-  }, [registrations])
+  // Use predefined categories from odisha-data.ts
+  const uniqueCategories = odishaCategory
 
-  const uniqueDistricts = useMemo(() => {
-    const districts = registrations
-      .map(r => r.district)
-      .filter(Boolean)
-      .filter((dist, index, self) => self.indexOf(dist) === index)
-      .sort()
-    return districts
-  }, [registrations])
+  // Use predefined districts from odisha-data.ts
+  const uniqueDistricts = odishaDistricts
 
+  // Get blocks based on selected district from odisha-data.ts
   const availableBlocks = useMemo(() => {
     if (filters.district === 'all') {
-      const allBlocks = registrations
-        .map(r => r.block)
-        .filter(Boolean)
-        .filter((block, index, self) => self.indexOf(block) === index)
-        .sort()
-      return allBlocks
+      // Return empty array when no district is selected
+      return []
     }
-    const blocks = registrations
-      .filter(r => r.district === filters.district)
-      .map(r => r.block)
-      .filter(Boolean)
-      .filter((block, index, self) => self.indexOf(block) === index)
-      .sort()
-    return blocks
-  }, [filters.district, registrations])
+    // Return blocks for the selected district
+    return odishaBlocks[filters.district] || []
+  }, [filters.district])
 
   useEffect(() => {
     fetchRegistrations()
@@ -186,6 +241,16 @@ export default function UserDetails() {
       filtered = filtered.filter(reg => reg.block === filters.block)
     }
 
+    // Date filter - filter registrations that have check-ins on the selected date (from scannedAt)
+    if (filters.date !== 'all') {
+      filtered = filtered.filter(reg => 
+        reg.checkIns.some(checkIn => {
+          const scannedDate = checkIn.scannedAt ? checkIn.scannedAt.split('T')[0] : null
+          return scannedDate === filters.date
+        })
+      )
+    }
+
     setFilteredRegistrations(filtered)
     setPageIndex(0)
   }
@@ -202,7 +267,8 @@ export default function UserDetails() {
       search: '',
       category: 'all',
       district: 'all',
-      block: 'all'
+      block: 'all',
+      date: 'all'
     })
   }
 
@@ -212,8 +278,18 @@ export default function UserDetails() {
     if (filters.category !== 'all') count++
     if (filters.district !== 'all') count++
     if (filters.block !== 'all') count++
+    if (filters.date !== 'all') count++
     return count
   }, [filters])
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-IN', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+    })
+  }
 
   const columns = createRegistrationColumns(pageIndex, pageSize)
 
@@ -315,9 +391,13 @@ export default function UserDetails() {
             </div>
             <Progress 
               value={attendanceStats.entry.percentage} 
-              className="h-2 mt-3 bg-blue-100" 
-              indicatorClassName="bg-blue-600"
+              className="h-2 mt-3 [&>div]:bg-blue-600"
             />
+            {filters.date !== 'all' && (
+              <div className="mt-2 text-xs text-blue-600 font-medium">
+                📅 {formatDate(filters.date)}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -348,9 +428,13 @@ export default function UserDetails() {
             </div>
             <Progress 
               value={attendanceStats.lunch.percentage} 
-              className="h-2 mt-3 bg-green-100" 
-              indicatorClassName="bg-green-600"
+              className="h-2 mt-3 [&>div]:bg-green-600"
             />
+            {filters.date !== 'all' && (
+              <div className="mt-2 text-xs text-green-600 font-medium">
+                📅 {formatDate(filters.date)}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -381,9 +465,13 @@ export default function UserDetails() {
             </div>
             <Progress 
               value={attendanceStats.dinner.percentage} 
-              className="h-2 mt-3 bg-orange-100" 
-              indicatorClassName="bg-orange-600"
+              className="h-2 mt-3 [&>div]:bg-orange-600"
             />
+            {filters.date !== 'all' && (
+              <div className="mt-2 text-xs text-orange-600 font-medium">
+                📅 {formatDate(filters.date)}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -414,9 +502,13 @@ export default function UserDetails() {
             </div>
             <Progress 
               value={attendanceStats.session.percentage} 
-              className="h-2 mt-3 bg-purple-100" 
-              indicatorClassName="bg-purple-600"
+              className="h-2 mt-3 [&>div]:bg-purple-600"
             />
+            {filters.date !== 'all' && (
+              <div className="mt-2 text-xs text-purple-600 font-medium">
+                📅 {formatDate(filters.date)}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -445,7 +537,31 @@ export default function UserDetails() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Date Filter */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Date
+            </label>
+            <Select
+              value={filters.date}
+              onValueChange={(value) => handleFilterChange('date', value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Dates</SelectItem>
+                {availableDates.map((date) => (
+                  <SelectItem key={date} value={date}>
+                    {formatDate(date)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Search */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Search</label>
@@ -517,7 +633,7 @@ export default function UserDetails() {
             <Select
               value={filters.block}
               onValueChange={(value) => handleFilterChange('block', value)}
-              disabled={filters.district === 'all' && availableBlocks.length === 0}
+              disabled={filters.district === 'all'}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={
@@ -528,7 +644,7 @@ export default function UserDetails() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
-                  {filters.district === 'all' ? 'All blocks' : `All blocks in ${filters.district}`}
+                  All blocks in {filters.district}
                 </SelectItem>
                 {availableBlocks.map((block) => (
                   <SelectItem key={block} value={block}>
@@ -544,6 +660,17 @@ export default function UserDetails() {
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap gap-2 pt-4 border-t">
             <span className="text-sm text-muted-foreground mr-2">Active filters:</span>
+            {filters.date !== 'all' && (
+              <Badge variant="secondary" className="gap-1 pl-2">
+                Date: {formatDate(filters.date)}
+                <button
+                  onClick={() => handleFilterChange('date', 'all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
             {filters.search && (
               <Badge variant="secondary" className="gap-1 pl-2">
                 Search: {filters.search.length > 20 ? `${filters.search.substring(0, 20)}...` : filters.search}
