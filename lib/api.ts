@@ -134,7 +134,6 @@ export interface GuestStatisticsResponse {
   generatedAt: string;
 }
 
-
 export interface GenerateGuestPassesData {
   delegates: number;
   vvip: number;
@@ -161,6 +160,7 @@ export interface GeneratePassesDto {
   vvip?: number;
   visitors?: number;
 }
+
 export interface AssignDetailsDto {
   name: string;
   mobile?: string;
@@ -180,7 +180,6 @@ export interface UpdateRegistrationData {
   category?: string;
 }
 
-
 export interface RegistrationFilters {
   search?: string;
   district?: string;
@@ -197,6 +196,10 @@ export interface PaginatedRegistrations {
   totalPages: number;
 }
 
+// ============================================
+// FEEDBACK TYPES (UPDATED WITH NAME FIELD)
+// ============================================
+
 export interface FeedbackQuestion {
   id: string;
   questionEnglish: string;
@@ -205,6 +208,15 @@ export interface FeedbackQuestion {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  statistics?: {
+    totalResponses: number;
+    averageRating: string;
+    ratings: Array<{
+      rating: number;
+      count: number;
+      percentage: string;
+    }>;
+  };
 }
 
 export interface FeedbackResponse {
@@ -213,7 +225,9 @@ export interface FeedbackResponse {
   comment?: string;
 }
 
+// UPDATED: Added name field to BulkFeedbackSubmission
 export interface BulkFeedbackSubmission {
+  name: string;  // ← NEW FIELD
   responses: FeedbackResponse[];
 }
 
@@ -230,6 +244,7 @@ export interface UpdateFeedbackQuestionData {
   isActive?: boolean;
 }
 
+// UPDATED: Added name to recent comments
 export interface FeedbackStatistics {
   question: FeedbackQuestion;
   totalResponses: number;
@@ -240,6 +255,7 @@ export interface FeedbackStatistics {
     percentage: string;
   }[];
   recentComments: {
+    name: string;  // ← NEW FIELD
     rating: number;
     comment: string;
     createdAt: string;
@@ -277,7 +293,7 @@ export const registrationApi = {
     }
   },
 
-   getAllWithFilters: async (filters: RegistrationFilters): Promise<PaginatedRegistrations> => {
+  getAllWithFilters: async (filters: RegistrationFilters): Promise<PaginatedRegistrations> => {
     try {
       const params = new URLSearchParams();
       if (filters.search) params.append('search', filters.search);
@@ -364,7 +380,8 @@ export const registrationApi = {
       throw new Error(error.response?.data?.message || 'Failed to fetch export stats');
     }
   },
-update: async (id: string, data: UpdateRegistrationData): Promise<RegistrationResponse> => {
+
+  update: async (id: string, data: UpdateRegistrationData): Promise<RegistrationResponse> => {
     try {
       const response = await api.patch(`/registrations/${id}`, data);
       console.log('✅ Registration updated:', response.data);
@@ -433,6 +450,10 @@ export const guestPassApi = {
   },
 };
 
+// ============================================
+// FEEDBACK APIs (UPDATED)
+// ============================================
+
 export const feedbackApi = {
   // Public APIs
   getActiveQuestions: async (): Promise<FeedbackQuestion[]> => {
@@ -445,20 +466,24 @@ export const feedbackApi = {
     }
   },
 
+  // UPDATED: Now accepts name in the submission
   submitFeedback: async (data: BulkFeedbackSubmission): Promise<{ submitted: number }> => {
     try {
+      console.log('📤 Submitting feedback with name:', data);
       const response = await api.post('/feedback/submit', data);
+      console.log('✅ Feedback submitted successfully:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Failed to submit feedback:', error);
+      console.error('❌ Failed to submit feedback:', error);
       throw new Error(error.response?.data?.message || 'Failed to submit feedback');
     }
   },
 
-  // Admin APIs
+  // Admin APIs - UPDATED: Returns questions with statistics
   getAllQuestions: async (includeInactive = false): Promise<FeedbackQuestion[]> => {
     try {
       const response = await api.get(`/feedback/admin/questions?includeInactive=${includeInactive}`);
+      console.log('📊 Fetched questions with stats:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch all questions:', error);
@@ -504,9 +529,11 @@ export const feedbackApi = {
     }
   },
 
-  getStatistics: async (): Promise<AllFeedbackStatistics> => {
+  // UPDATED: Returns overall statistics
+  getAllStatistics: async (): Promise<AllFeedbackStatistics> => {
     try {
       const response = await api.get('/feedback/admin/statistics');
+      console.log('📊 Overall statistics:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch statistics:', error);
@@ -514,9 +541,11 @@ export const feedbackApi = {
     }
   },
 
+  // UPDATED: Returns statistics with names in comments
   getQuestionStatistics: async (questionId: string): Promise<FeedbackStatistics> => {
     try {
       const response = await api.get(`/feedback/admin/statistics/${questionId}`);
+      console.log('📊 Question statistics:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch question statistics:', error);

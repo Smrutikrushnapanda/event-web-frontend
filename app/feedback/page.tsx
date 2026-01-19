@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Send, CheckCircle, Loader2 } from "lucide-react";
+import { Star, Send, CheckCircle, Loader2, User } from "lucide-react";
 import { feedbackApi, FeedbackQuestion, FeedbackResponse } from "@/lib/api";
 
 export default function FeedbackPage() {
   const [questions, setQuestions] = useState<FeedbackQuestion[]>([]);
   const [answers, setAnswers] = useState<FeedbackResponse[]>([]);
+  const [name, setName] = useState("");
   const [language, setLanguage] = useState<"odia" | "english">("odia");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,16 @@ export default function FeedbackPage() {
   };
 
   const handleSubmit = async () => {
+    // Validate name
+    if (!name.trim()) {
+      alert(
+        language === "english"
+          ? "Please enter your name before submitting."
+          : "ଦାଖଲ କରିବା ପୂର୍ବରୁ ଦୟାକରି ଆପଣଙ୍କର ନାମ ପ୍ରବେଶ କରନ୍ତୁ।"
+      );
+      return;
+    }
+
     // Filter out unanswered questions (rating = 0)
     const answeredQuestions = answers.filter((a) => a.rating > 0);
     
@@ -65,8 +76,8 @@ export default function FeedbackPage() {
 
     setSubmitting(true);
     try {
-      console.log('Submitting data:', { responses: answeredQuestions });
-      await feedbackApi.submitFeedback({ responses: answeredQuestions });
+      console.log('Submitting data:', { name, responses: answeredQuestions });
+      await feedbackApi.submitFeedback({ name: name.trim(), responses: answeredQuestions });
       setSubmitted(true);
     } catch (error) {
       console.error("Failed to submit feedback:", error);
@@ -157,6 +168,16 @@ export default function FeedbackPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
+            className="text-lg text-gray-600 mb-2"
+          >
+            {language === "english"
+              ? `Thank you, ${name}!`
+              : `ଧନ୍ୟବାଦ, ${name}!`}
+          </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
             className="text-lg text-gray-600 mb-8"
           >
             {language === "english"
@@ -280,6 +301,42 @@ export default function FeedbackPage() {
             </p>
           </motion.div>
         </div>
+
+        {/* Name Input */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mb-8"
+        >
+          <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8 border-2 border-sky-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-gradient-to-r from-sky-500 to-blue-500 rounded-full">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl md:text-2xl font-bold text-gray-800">
+                {language === "english" ? "Your Name" : "ଆପଣଙ୍କର ନାମ"}
+              </h3>
+            </div>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={
+                language === "english"
+                  ? "Enter your name *"
+                  : "ଆପଣଙ୍କର ନାମ ପ୍ରବେଶ କରନ୍ତୁ *"
+              }
+              className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all outline-none"
+              required
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              {language === "english" 
+                ? "* Required field" 
+                : "* ଆବଶ୍ୟକ କ୍ଷେତ୍ର"}
+            </p>
+          </div>
+        </motion.div>
 
         {/* Questions */}
         <div className="space-y-6">
