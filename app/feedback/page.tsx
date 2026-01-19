@@ -134,7 +134,6 @@ export default function FeedbackPage() {
             {language === "english" ? "Try Again" : "ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ"}
           </button>
           <p className="text-sm text-gray-500 mt-4">
-            API: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}
           </p>
         </motion.div>
       </div>
@@ -216,7 +215,7 @@ export default function FeedbackPage() {
       />
 
       {/* Header */}
-      <header className="w-full py-4 relative z-10 bg-white shadow-sm">
+      <header className="w-full py-4 relative z-10">
         <div className="w-full px-4 md:px-6">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4" style={{ alignItems: "center" }}>
             <img
@@ -493,7 +492,7 @@ export default function FeedbackPage() {
       <img
         src="/images/fish-cow.png"
         alt="Fish & Cow Illustration"
-        className="absolute bottom-0 right-4 md:right-6 w-[180px] md:w-[220px] lg:w-[260px] xl:w-[300px] pointer-events-none z-10"
+        className="absolute bottom-0 right-4 md:right-6 w-[110px] md:w-[220px] lg:w-[260px] xl:w-[300px] pointer-events-none z-10"
       />
 
       {/* Grass Footer */}
