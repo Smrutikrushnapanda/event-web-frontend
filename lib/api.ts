@@ -196,6 +196,12 @@ export interface PaginatedRegistrations {
   totalPages: number;
 }
 
+export interface AttendanceExportParams {
+  date: string;
+  district?: string;
+  block?: string;
+}
+
 // ============================================
 // FEEDBACK TYPES (UPDATED WITH NAME FIELD)
 // ============================================
@@ -327,6 +333,53 @@ export const registrationApi = {
     } catch (error: any) {
       console.error('Failed to fetch blocks:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch blocks');
+    }
+  },
+
+  exportAttendance: async (params: AttendanceExportParams): Promise<void> => {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('date', params.date);
+      if (params.district) queryParams.append('district', params.district);
+      if (params.block) queryParams.append('block', params.block);
+
+      const url = `${API_BASE_URL}/registrations/export/attendance?${queryParams.toString()}`;
+      
+      console.log('📥 Downloading attendance report from:', url);
+
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to export attendance report');
+      }
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'Attendance_Report.xlsx';
+      
+      if (contentDisposition) {
+        const matches = /filename="([^"]*)"/.exec(contentDisposition);
+        if (matches && matches[1]) {
+          filename = matches[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      console.log('✅ Attendance report downloaded:', filename);
+    } catch (error: any) {
+      console.error('❌ Export attendance error:', error);
+      throw new Error(error.message || 'Failed to export attendance report');
     }
   },
 

@@ -19,7 +19,9 @@ import {
   CheckCircle,
   Coffee,
   Utensils,
-  Calendar
+  Calendar,
+  Download,
+  FileSpreadsheet
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -51,6 +53,10 @@ export default function UserDetails() {
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize] = useState(10)
   
+  // Export states
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportDate, setExportDate] = useState<string>('all')
+  
   // Filters state
   const [filters, setFilters] = useState<Filters>({
     search: '',
@@ -59,6 +65,24 @@ export default function UserDetails() {
     block: 'all',
     date: 'all'
   })
+
+  // Process registrations to compute check-in flags from checkIns array
+  const processRegistrations = (data: Registration[]): Registration[] => {
+    return data.map(registration => {
+      const hasEntryCheckIn = registration.checkIns.some(ci => ci.type === 'entry')
+      const hasLunchCheckIn = registration.checkIns.some(ci => ci.type === 'lunch')
+      const hasDinnerCheckIn = registration.checkIns.some(ci => ci.type === 'dinner')
+      const hasSessionCheckIn = registration.checkIns.some(ci => ci.type === 'session')
+
+      return {
+        ...registration,
+        hasEntryCheckIn,
+        hasLunchCheckIn,
+        hasDinnerCheckIn,
+        hasSessionCheckIn
+      }
+    })
+  }
 
   // Extract available dates from check-ins (from scannedAt timestamps)
   const availableDates = useMemo(() => {
@@ -203,8 +227,10 @@ export default function UserDetails() {
       setLoading(true)
       setError(null)
       const data = await registrationApi.getAll()
-      setRegistrations(data)
-      setFilteredRegistrations(data)
+      // Process data to compute check-in flags
+      const processedData = processRegistrations(data)
+      setRegistrations(processedData)
+      setFilteredRegistrations(processedData)
     } catch (err: any) {
       console.error('Failed to fetch registrations:', err)
       setError(err.message || 'Failed to load registrations')
@@ -291,6 +317,32 @@ export default function UserDetails() {
     })
   }
 
+  // ✅ UPDATED: Export for single date only
+  const handleExportAttendance = async () => {
+    try {
+      setIsExporting(true)
+
+      // Validate that a date is selected
+      if (exportDate === 'all') {
+        alert('Please select a specific date to export')
+        return
+      }
+
+      await registrationApi.exportAttendance({
+        date: exportDate,
+        district: filters.district !== 'all' ? filters.district : undefined,
+        block: filters.block !== 'all' ? filters.block : undefined,
+      })
+
+      console.log('✅ Attendance report exported successfully')
+    } catch (err: any) {
+      console.error('Export error:', err)
+      alert(err.message || 'Failed to export attendance report')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const columns = createRegistrationColumns(pageIndex, pageSize)
 
   if (loading) {
@@ -361,6 +413,94 @@ export default function UserDetails() {
           </Button>
         </div>
       </div>
+
+      {/* ✅ UPDATED: Export Section with Single Date Dropdown */}
+      <Card className="mb-6 border-2 border-green-200 bg-green-50/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5 text-green-600" />
+            Export Attendance Report
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Date Dropdown */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Select Date *
+              </label>
+              <Select
+                value={exportDate}
+                onValueChange={setExportDate}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose date to export" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" disabled>
+                    Select a date
+                  </SelectItem>
+                  {availableDates.map((date) => (
+                    <SelectItem key={date} value={date}>
+                      {formatDate(date)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Info Text */}
+            <div className="flex items-end">
+              <div className="text-sm text-muted-foreground space-y-1">
+                {exportDate !== 'all' && (
+                  <div className="text-green-700 font-medium">
+                    📅 Exporting: {formatDate(exportDate)}
+                  </div>
+                )}
+                {filters.district !== 'all' && (
+                  <div>📍 District: <strong>{filters.district}</strong></div>
+                )}
+                {filters.block !== 'all' && (
+                  <div>🏢 Block: <strong>{filters.block}</strong></div>
+                )}
+                {filters.district === 'all' && filters.block === 'all' && exportDate === 'all' && (
+                  <span className="text-xs text-muted-foreground">
+                    Select date and optionally filter by district/block
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Export Button */}
+            <div className="flex items-end">
+              <Button
+                onClick={handleExportAttendance}
+                disabled={isExporting || exportDate === 'all'}
+                className="w-full gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Export Excel
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {exportDate === 'all' && (
+            <div className="mt-3 text-sm text-orange-700 bg-orange-100 p-2 rounded">
+              ⚠️ Please select a specific date to export attendance report
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Attendance Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
