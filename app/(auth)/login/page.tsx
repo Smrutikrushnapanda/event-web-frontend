@@ -85,10 +85,8 @@ export default function LoginPage() {
               <User className="h-10 w-10 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Volunteer Login</CardTitle>
-          <CardDescription>
-            Enter your credentials to access the dashboard
-          </CardDescription>
+          <CardTitle className="text-2xl font-bold">Login</CardTitle>
+          <CardDescription>Sign in to access the dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -144,7 +142,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>For approved volunteers only</p>
+            <p>Authorized users only</p>
             <p className="mt-1">Contact admin if you have issues logging in</p>
           </div>
         </CardContent>
